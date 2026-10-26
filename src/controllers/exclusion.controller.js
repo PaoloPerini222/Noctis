@@ -1,5 +1,6 @@
 import pool from "../data/db.js";
 import {parseId, textoOpcional} from "../utils/validaciones.js";
+import {esDeLaEmpresa} from "../utils/empresa.js";
 
 const SELECT_EXCLUSION = `
     select x.*, s.nombre as servicio, p.nombre as registrado_por_nombre
@@ -7,8 +8,8 @@ const SELECT_EXCLUSION = `
     join servicio s on s.id_servicio = x.id_servicio
     join personal p on p.id_personal = x.registrado_por`;
 
-const existeEvento = async (idEvento) => {
-    const evento = await pool.query(`select 1 from evento where id_evento = $1`, [idEvento]);
+const existeEvento = async (idEvento, idEmpresa) => {
+    const evento = await pool.query(`select 1 from evento where id_evento = $1 and id_empresa = $2`, [idEvento, idEmpresa]);
 
     return evento.rows.length > 0;
 };
@@ -19,7 +20,7 @@ export const obtenerExclusiones = async (req, res) => {
         if(idEvento === null){
             return res.status(400).json({mensaje: "el id del evento no es valido"});
         }
-        if(!(await existeEvento(idEvento))){
+        if(!(await existeEvento(idEvento, req.usuario.id_empresa))){
             return res.status(404).json({mensaje: "ese evento no existe"});
         }
 
@@ -57,8 +58,12 @@ export const crearExclusion = async (req, res) => {
             return res.status(400).json({mensaje: "tu usuario no tiene una persona asociada para registrar la exclusion"});
         }
 
-        if(!(await existeEvento(idEvento))){
+        if(!(await existeEvento(idEvento, req.usuario.id_empresa))){
             return res.status(404).json({mensaje: "ese evento no existe"});
+        }
+
+        if(!(await esDeLaEmpresa("servicio", idServicio, req.usuario.id_empresa))){
+            return res.status(400).json({mensaje: "el servicio indicado no existe"});
         }
 
         const creada = await pool.query(
@@ -98,8 +103,11 @@ export const editarExclusion = async (req, res) => {
         }
 
         const editada = await pool.query(
-            `update servicio_excluido_evento set motivo = $1 where id_evento = $2 and id_exclusion = $3 returning id_exclusion`,
-            [motivo.valor, idEvento, idExclusion]
+            `update servicio_excluido_evento x set motivo = $1
+             from evento e
+             where x.id_evento = $2 and x.id_exclusion = $3 and e.id_evento = x.id_evento and e.id_empresa = $4
+             returning x.id_exclusion`,
+            [motivo.valor, idEvento, idExclusion, req.usuario.id_empresa]
         );
         if(editada.rows.length === 0){
             return res.status(404).json({mensaje: "esa exclusion no existe en el evento"});
@@ -124,8 +132,10 @@ export const eliminarExclusion = async (req, res) => {
         }
 
         const eliminada = await pool.query(
-            `delete from servicio_excluido_evento where id_evento = $1 and id_exclusion = $2 returning *`,
-            [idEvento, idExclusion]
+            `delete from servicio_excluido_evento x using evento e
+             where x.id_evento = $1 and x.id_exclusion = $2 and e.id_evento = x.id_evento and e.id_empresa = $3
+             returning x.*`,
+            [idEvento, idExclusion, req.usuario.id_empresa]
         );
         if(eliminada.rows.length === 0){
             return res.status(404).json({mensaje: "esa exclusion no existe en el evento"});

@@ -1,12 +1,12 @@
-import { ArrowLeftOutlined, LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
-import { Alert, Button, Form, Input, Segmented } from "antd";
+import { ArrowLeftOutlined, BankOutlined, LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
+import { Alert, Button, Form, Input, Segmented, Select } from "antd";
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import BotonTema from "../components/BotonTema.jsx";
 import Logo from "../components/Logo.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { mensajeError } from "../services/api.js";
-import { registrar } from "../services/authService.js";
+import { listarEmpresas, registrar } from "../services/authService.js";
 
 // Login y registro comparten pantalla: modo "login" o "registro" según la ruta.
 // El formulario es de Ant Design (Form): valida los campos antes de llamar a onFinish.
@@ -16,14 +16,23 @@ export default function Acceso({ modo }) {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [empresas, setEmpresas] = useState([]);
 
   // Al pasar de login a registro (o al revés) se limpia el error anterior.
   useEffect(() => setError(""), [modo]);
 
+  // Al crear la cuenta hay que elegir a qué empresa pertenece quien se registra.
+  useEffect(() => {
+    if (esLogin) return;
+    listarEmpresas()
+      .then(setEmpresas)
+      .catch((err) => setError(mensajeError(err, "No se pudieron cargar las empresas")));
+  }, [esLogin]);
+
   // Si ya hay sesión no tiene sentido ver esta pantalla.
   if (usuario) return <Navigate to="/eventos" replace />;
 
-  // valores = { nombre?, email, password } ya validados por antd.
+  // valores = { nombre?, id_empresa?, email, password } ya validados por antd.
   const enviar = async (valores) => {
     setError("");
     setEnviando(true);
@@ -80,6 +89,18 @@ export default function Acceso({ modo }) {
           {!esLogin && (
             <Form.Item name="nombre" label="Nombre" rules={[{ required: true, message: "Ingresá tu nombre" }]}>
               <Input prefix={<UserOutlined />} placeholder="Nombre Apellido" autoComplete="name" />
+            </Form.Item>
+          )}
+
+          {!esLogin && (
+            <Form.Item name="id_empresa" label="Empresa" rules={[{ required: true, message: "Elegí tu empresa" }]}>
+              <Select
+                showSearch
+                optionFilterProp="label"
+                suffixIcon={<BankOutlined />}
+                placeholder="Elegí tu empresa"
+                options={empresas.map((e) => ({ value: e.id_empresa, label: e.nombre }))}
+              />
             </Form.Item>
           )}
 

@@ -4,8 +4,8 @@ import {RESPONSABLE} from "../middleware/permisos.js";
 import {ESTADOS_EVENTO_CERRADOS, sincronizarEventoConPropuesta} from "../utils/reglas.js";
 
 // Con el evento cerrado (realizado, cancelado o rechazado) su propuesta se conserva sin cambios.
-const estadoDelEvento = async (db, idEvento) => {
-    const evento = await db.query(`SELECT estado FROM evento WHERE id_evento = $1`, [idEvento]);
+const estadoDelEvento = async (db, idEvento, idEmpresa) => {
+    const evento = await db.query(`SELECT estado FROM evento WHERE id_evento = $1 AND id_empresa = $2`, [idEvento, idEmpresa]);
     return evento.rows[0]?.estado ?? null;
 };
 const mensajeEventoCerrado = (estado) => `El evento está ${estado}: su propuesta ya no se modifica`;
@@ -75,7 +75,11 @@ const validarCampos = (body) => {
 
 export const obtenerPropuestas = async (req, res) => {
     try {
-        const resultado = await pool.query(`SELECT * FROM propuesta ORDER BY id_propuesta`)
+        const resultado = await pool.query(`
+            SELECT p.* FROM propuesta p
+            JOIN evento e ON e.id_evento = p.id_evento
+            WHERE e.id_empresa = $1
+            ORDER BY p.id_propuesta`, [req.usuario.id_empresa])
         res.json(resultado.rows)
     } catch (error) {
         console.error(error);
@@ -91,8 +95,9 @@ export const obtenerPropuesta = async (req, res) => {
         }
 
         const resultado = await pool.query(`
-            SELECT * FROM propuesta
-            WHERE id_propuesta = $1`, [id]);
+            SELECT p.* FROM propuesta p
+            JOIN evento e ON e.id_evento = p.id_evento
+            WHERE p.id_propuesta = $1 AND e.id_empresa = $2`, [id, req.usuario.id_empresa]);
         if (resultado.rows.length === 0) {
             return res.status(404).json({ mensaje: "Propuesta no encontrada" });
         };
@@ -116,7 +121,10 @@ export const crearPropuesta = async (req, res) => {
             return res.status(400).json({ mensaje: error });
         }
 
-        const estadoEvento = await estadoDelEvento(pool, idEvento);
+        const estadoEvento = await estadoDelEvento(pool, idEvento, req.usuario.id_empresa);
+        if (estadoEvento === null) {
+            return res.status(404).json({ mensaje: "El evento indicado no existe" });
+        }
         if (ESTADOS_EVENTO_CERRADOS.includes(estadoEvento)) {
             return res.status(409).json({ mensaje: mensajeEventoCerrado(estadoEvento) });
         }
@@ -144,15 +152,16 @@ export const editarPropuesta = async (req, res) => {
         await cliente.query("BEGIN");
 
         const actualRes = await cliente.query(
-            `SELECT *, fecha_emision::text AS fecha_emision, fecha_respuesta::text AS fecha_respuesta
-             FROM propuesta WHERE id_propuesta = $1 FOR UPDATE`, [id]);
+            `SELECT p.*, p.fecha_emision::text AS fecha_emision, p.fecha_respuesta::text AS fecha_respuesta
+             FROM propuesta p JOIN evento e ON e.id_evento = p.id_evento
+             WHERE p.id_propuesta = $1 AND e.id_empresa = $2 FOR UPDATE OF p`, [id, req.usuario.id_empresa]);
         if (actualRes.rows.length === 0) {
             await cliente.query("ROLLBACK");
             return res.status(404).json({ mensaje: "Propuesta no encontrada" });
         }
         const actual = actualRes.rows[0];
 
-        const estadoEvento = await estadoDelEvento(cliente, actual.id_evento);
+        const estadoEvento = await estadoDelEvento(cliente, actual.id_evento, req.usuario.id_empresa);
         if (ESTADOS_EVENTO_CERRADOS.includes(estadoEvento)) {
             await cliente.query("ROLLBACK");
             return res.status(409).json({ mensaje: mensajeEventoCerrado(estadoEvento) });
@@ -243,7 +252,7 @@ export const aprobarPropuesta = async (req, res) => {
             SELECT p.estado, p.total, e.estado AS estado_evento,
                    (SELECT count(*) FROM detalle_propuesta d WHERE d.id_propuesta = $1 AND NOT d.descartado)::int AS servicios
             FROM propuesta p JOIN evento e ON e.id_evento = p.id_evento
-            WHERE p.id_propuesta = $1`, [id]);
+            WHERE p.id_propuesta = $1 AND e.id_empresa = $2`, [id, req.usuario.id_empresa]);
         if (actual.rows.length === 0) {
             return res.status(404).json({ mensaje: "Propuesta no encontrada" });
         }
@@ -285,7 +294,9 @@ export const eliminarPropuesta = async (req, res) => {
 
         await cliente.query("BEGIN");
 
-        const actual = await cliente.query(`SELECT estado FROM propuesta WHERE id_propuesta = $1 FOR UPDATE`, [id]);
+        const actual = await cliente.query(`
+            SELECT p.estado FROM propuesta p JOIN evento e ON e.id_evento = p.id_evento
+            WHERE p.id_propuesta = $1 AND e.id_empresa = $2 FOR UPDATE OF p`, [id, req.usuario.id_empresa]);
         if (actual.rows.length === 0) {
             await cliente.query("ROLLBACK");
             return res.status(404).json({ mensaje: "Propuesta no encontrada" });

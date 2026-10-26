@@ -16,13 +16,14 @@ const validarServicio = (body) => {
 };
 
 // Dos servicios no pueden llamarse igual (sin distinguir mayusculas ni espacios de mas).
-const nombreRepetido = async (nombre, idServicio = null) => {
+const nombreRepetido = async (idEmpresa, nombre, idServicio = null) => {
     const repetido = await pool.query(
         `select 1 from servicio
-         where lower(regexp_replace(trim(nombre), '\\s+', ' ', 'g')) = lower(regexp_replace(trim($1), '\\s+', ' ', 'g'))
+         where id_empresa = $3
+           and lower(regexp_replace(trim(nombre), '\\s+', ' ', 'g')) = lower(regexp_replace(trim($1), '\\s+', ' ', 'g'))
            and ($2::int is null or id_servicio <> $2)
          limit 1`,
-        [nombre, idServicio]
+        [nombre, idServicio, idEmpresa]
     );
 
     return repetido.rows.length > 0;
@@ -30,7 +31,7 @@ const nombreRepetido = async (nombre, idServicio = null) => {
 
 export const obtenerServicios = async (req, res) => {
     try{
-        const servicios = await pool.query(`select * from servicio order by nombre`);
+        const servicios = await pool.query(`select * from servicio where id_empresa = $1 order by nombre`, [req.usuario.id_empresa]);
 
         res.json(servicios.rows);
 
@@ -48,7 +49,7 @@ export const obtenerServicio = async (req, res) => {
             return res.status(400).json({mensaje: "el id del servicio no es valido"});
         }
 
-        const servicio = await pool.query(`select * from servicio where id_servicio = $1`, [idServicio]);
+        const servicio = await pool.query(`select * from servicio where id_servicio = $1 and id_empresa = $2`, [idServicio, req.usuario.id_empresa]);
         if(servicio.rows.length === 0){
             return res.status(404).json({mensaje: "ese servicio no existe"});
         }
@@ -68,13 +69,13 @@ export const crearServicio = async (req, res) => {
         if(error){
             return res.status(400).json({mensaje: error});
         }
-        if(await nombreRepetido(datos.nombre)){
+        if(await nombreRepetido(req.usuario.id_empresa, datos.nombre)){
             return res.status(409).json({mensaje: "ya existe un servicio con ese nombre"});
         }
 
         const creado = await pool.query(
-            `insert into servicio (nombre, descripcion) values ($1, $2) returning *`,
-            [datos.nombre, datos.descripcion]
+            `insert into servicio (nombre, descripcion, id_empresa) values ($1, $2, $3) returning *`,
+            [datos.nombre, datos.descripcion, req.usuario.id_empresa]
         );
 
         res.status(201).json(creado.rows[0]);
@@ -93,7 +94,7 @@ export const editarServicio = async (req, res) => {
             return res.status(400).json({mensaje: "el id del servicio no es valido"});
         }
 
-        const actual = await pool.query(`select nombre, descripcion from servicio where id_servicio = $1`, [idServicio]);
+        const actual = await pool.query(`select nombre, descripcion from servicio where id_servicio = $1 and id_empresa = $2`, [idServicio, req.usuario.id_empresa]);
         if(actual.rows.length === 0){
             return res.status(404).json({mensaje: "ese servicio no existe"});
         }
@@ -102,13 +103,13 @@ export const editarServicio = async (req, res) => {
         if(error){
             return res.status(400).json({mensaje: error});
         }
-        if(await nombreRepetido(datos.nombre, idServicio)){
+        if(await nombreRepetido(req.usuario.id_empresa, datos.nombre, idServicio)){
             return res.status(409).json({mensaje: "ya existe un servicio con ese nombre"});
         }
 
         const editado = await pool.query(
-            `update servicio set nombre = $1, descripcion = $2 where id_servicio = $3 returning *`,
-            [datos.nombre, datos.descripcion, idServicio]
+            `update servicio set nombre = $1, descripcion = $2 where id_servicio = $3 and id_empresa = $4 returning *`,
+            [datos.nombre, datos.descripcion, idServicio, req.usuario.id_empresa]
         );
 
         res.json(editado.rows[0]);
@@ -127,7 +128,7 @@ export const eliminarServicio = async (req, res) => {
             return res.status(400).json({mensaje: "el id del servicio no es valido"});
         }
 
-        const eliminado = await pool.query(`delete from servicio where id_servicio = $1 returning *`, [idServicio]);
+        const eliminado = await pool.query(`delete from servicio where id_servicio = $1 and id_empresa = $2 returning *`, [idServicio, req.usuario.id_empresa]);
         if(eliminado.rows.length === 0){
             return res.status(404).json({mensaje: "ese servicio no existe"});
         }

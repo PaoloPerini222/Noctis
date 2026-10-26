@@ -10,8 +10,8 @@ const SELECT_PROVEEDOR = `
     left join proveedor_servicio ps on ps.id_proveedor = p.id_proveedor
     left join servicio s on s.id_servicio = ps.id_servicio`;
 
-const buscarProveedor = async (db, idProveedor) => {
-    const proveedor = await db.query(`${SELECT_PROVEEDOR} where p.id_proveedor = $1 group by p.id_proveedor`, [idProveedor]);
+const buscarProveedor = async (db, idEmpresa, idProveedor) => {
+    const proveedor = await db.query(`${SELECT_PROVEEDOR} where p.id_proveedor = $1 and p.id_empresa = $2 group by p.id_proveedor`, [idProveedor, idEmpresa]);
 
     return proveedor.rows[0];
 };
@@ -35,7 +35,7 @@ const validarProveedor = (body) => {
 
 export const obtenerProveedores = async (req, res) => {
     try{
-        const proveedores = await pool.query(`${SELECT_PROVEEDOR} group by p.id_proveedor order by p.nombre`);
+        const proveedores = await pool.query(`${SELECT_PROVEEDOR} where p.id_empresa = $1 group by p.id_proveedor order by p.nombre`, [req.usuario.id_empresa]);
 
         res.json(proveedores.rows);
 
@@ -53,7 +53,7 @@ export const obtenerProveedor = async (req, res) => {
             return res.status(400).json({mensaje: "el id del proveedor no es valido"});
         }
 
-        const proveedor = await buscarProveedor(pool, idProveedor);
+        const proveedor = await buscarProveedor(pool, req.usuario.id_empresa, idProveedor);
         if(!proveedor){
             return res.status(404).json({mensaje: "ese proveedor no existe"});
         }
@@ -75,20 +75,20 @@ export const crearProveedor = async (req, res) => {
         }
 
         // Si ya existe un proveedor con ese nombre se reutiliza en vez de duplicarlo.
-        const existente = await pool.query(`select id_proveedor from proveedor where lower(nombre) = lower($1)`, [datos.nombre]);
+        const existente = await pool.query(`select id_proveedor from proveedor where id_empresa = $2 and lower(nombre) = lower($1)`, [datos.nombre, req.usuario.id_empresa]);
         if(existente.rows.length > 0){
             return res.status(409).json({
                 mensaje: "ya existe un proveedor con ese nombre: reutilizalo",
-                proveedor: await buscarProveedor(pool, existente.rows[0].id_proveedor),
+                proveedor: await buscarProveedor(pool, req.usuario.id_empresa, existente.rows[0].id_proveedor),
             });
         }
 
         const creado = await pool.query(
-            `insert into proveedor (nombre, contacto, telefono, email) values ($1, $2, $3, $4) returning id_proveedor`,
-            [datos.nombre, datos.contacto, datos.telefono, datos.email]
+            `insert into proveedor (nombre, contacto, telefono, email, id_empresa) values ($1, $2, $3, $4, $5) returning id_proveedor`,
+            [datos.nombre, datos.contacto, datos.telefono, datos.email, req.usuario.id_empresa]
         );
 
-        res.status(201).json(await buscarProveedor(pool, creado.rows[0].id_proveedor));
+        res.status(201).json(await buscarProveedor(pool, req.usuario.id_empresa, creado.rows[0].id_proveedor));
 
     } catch(error){
         console.error(error);
@@ -104,7 +104,7 @@ export const editarProveedor = async (req, res) => {
             return res.status(400).json({mensaje: "el id del proveedor no es valido"});
         }
 
-        const actual = await pool.query(`select nombre, contacto, telefono, email from proveedor where id_proveedor = $1`, [idProveedor]);
+        const actual = await pool.query(`select nombre, contacto, telefono, email from proveedor where id_proveedor = $1 and id_empresa = $2`, [idProveedor, req.usuario.id_empresa]);
         if(actual.rows.length === 0){
             return res.status(404).json({mensaje: "ese proveedor no existe"});
         }
@@ -119,7 +119,7 @@ export const editarProveedor = async (req, res) => {
             [datos.nombre, datos.contacto, datos.telefono, datos.email, idProveedor]
         );
 
-        res.json(await buscarProveedor(pool, idProveedor));
+        res.json(await buscarProveedor(pool, req.usuario.id_empresa, idProveedor));
 
     } catch(error){
         console.error(error);
@@ -137,13 +137,14 @@ export const eliminarProveedor = async (req, res) => {
         }
 
         await cliente.query("begin");
-        await cliente.query(`delete from proveedor_servicio where id_proveedor = $1`, [idProveedor]);
-        const eliminado = await cliente.query(`delete from proveedor where id_proveedor = $1 returning *`, [idProveedor]);
-
-        if(eliminado.rows.length === 0){
+        const propio = await cliente.query(`select 1 from proveedor where id_proveedor = $1 and id_empresa = $2 for update`, [idProveedor, req.usuario.id_empresa]);
+        if(propio.rows.length === 0){
             await cliente.query("rollback");
             return res.status(404).json({mensaje: "ese proveedor no existe"});
         }
+
+        await cliente.query(`delete from proveedor_servicio where id_proveedor = $1`, [idProveedor]);
+        const eliminado = await cliente.query(`delete from proveedor where id_proveedor = $1 returning *`, [idProveedor]);
 
         await cliente.query("commit");
         res.json({mensaje: "proveedor eliminado", proveedor: eliminado.rows[0]});
@@ -178,10 +179,17 @@ export const asignarServicios = async (req, res) => {
 
         await cliente.query("begin");
 
-        const existe = await cliente.query(`select 1 from proveedor where id_proveedor = $1 for update`, [idProveedor]);
+        const existe = await cliente.query(`select 1 from proveedor where id_proveedor = $1 and id_empresa = $2 for update`, [idProveedor, req.usuario.id_empresa]);
         if(existe.rows.length === 0){
             await cliente.query("rollback");
             return res.status(404).json({mensaje: "ese proveedor no existe"});
+        }
+
+        // Los servicios tienen que ser de la misma empresa que el proveedor.
+        const propios = await cliente.query(`select count(*)::int as cantidad from servicio where id_servicio = any($1) and id_empresa = $2`, [ids, req.usuario.id_empresa]);
+        if(propios.rows[0].cantidad !== new Set(ids).size){
+            await cliente.query("rollback");
+            return res.status(400).json({mensaje: "alguno de los servicios indicados no existe"});
         }
 
         await cliente.query(`delete from proveedor_servicio where id_proveedor = $1`, [idProveedor]);
@@ -190,7 +198,7 @@ export const asignarServicios = async (req, res) => {
         }
 
         await cliente.query("commit");
-        res.json(await buscarProveedor(pool, idProveedor));
+        res.json(await buscarProveedor(pool, req.usuario.id_empresa, idProveedor));
 
     } catch(error){
         await cliente.query("rollback");

@@ -18,6 +18,10 @@ export const conRol = (req, res, next) => {
             : "Tu cuenta todavía no tiene un rol asignado. Pedile a la responsable que te autorice";
         return res.status(403).json({ mensaje });
     }
+    // Los datos son de una empresa: sin empresa asignada no hay nada que ver.
+    if (!req.usuario.id_empresa) {
+        return res.status(403).json({ mensaje: "Tu cuenta no está asociada a ninguna empresa" });
+    }
     next();
 };
 
@@ -36,7 +40,7 @@ export const duenoDelEvento = (resolver) => async (req, res, next) => {
             return next();
         }
 
-        const eventos = await pool.query(`select id_evento, id_organizador from evento where id_evento = any($1)`, [ids]);
+        const eventos = await pool.query(`select id_evento, id_organizador from evento where id_evento = any($1) and id_empresa = $2`, [ids, req.usuario.id_empresa]);
         if (eventos.rows.length !== new Set(ids).size) {
             return res.status(404).json({ mensaje: "ese evento no existe" });
         }
@@ -67,7 +71,9 @@ export const eventoDePropuesta = (param) => async (req) => {
     const id = parseId(req.params[param]);
     if (id === null) return null;
 
-    const propuesta = await pool.query(`select id_evento from propuesta where id_propuesta = $1`, [id]);
+    const propuesta = await pool.query(`
+        select p.id_evento from propuesta p join evento e on e.id_evento = p.id_evento
+        where p.id_propuesta = $1 and e.id_empresa = $2`, [id, req.usuario.id_empresa]);
     if (propuesta.rows.length === 0) return [-1]; // id inexistente: el middleware responde 404
 
     return [propuesta.rows[0].id_evento, ...idsDeEventoEnBody(req)];
@@ -77,7 +83,9 @@ export const eventoDeTarea = (param) => async (req) => {
     const id = parseId(req.params[param]);
     if (id === null) return null;
 
-    const tarea = await pool.query(`select id_evento from tarea where id_tarea = $1`, [id]);
+    const tarea = await pool.query(`
+        select t.id_evento from tarea t join evento e on e.id_evento = t.id_evento
+        where t.id_tarea = $1 and e.id_empresa = $2`, [id, req.usuario.id_empresa]);
     if (tarea.rows.length === 0) return [-1];
 
     return [tarea.rows[0].id_evento, ...idsDeEventoEnBody(req)];

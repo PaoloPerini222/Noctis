@@ -93,12 +93,31 @@ docker exec -it eventos-db psql -U eventos -d eventos
 | Área | Tablas |
 |---|---|
 | Acceso y personal | `usuario`, `personal`, `rol`, `personal_rol` |
-| Empresas | `empresas` |
+| Empresas (multiempresa) | `empresas` |
 | Clientes y eventos | `cliente`, `evento`, `cambio_evento` |
 | Servicios y proveedores | `servicio`, `proveedor`, `proveedor_servicio`, `servicio_excluido_evento` |
 | Propuestas | `propuesta`, `detalle_propuesta` |
 | Tareas | `tarea` |
 | Cierre | `cierre`, `aviso_proveedor_cancelacion` |
+
+### Multiempresa
+
+Cada empresa (`empresas`) es una organizadora con sus propios datos. `personal`, `cliente`, `evento`, `servicio` y `proveedor` llevan `id_empresa`; todo lo demás (propuestas, tareas, cierres, etc.) pertenece a la empresa de su evento.
+
+- La empresa del usuario sale de `personal.id_empresa` y se lee de la base en cada pedido (no del token). Todas las consultas filtran por ella: un id de otra empresa responde `404`.
+- Al crear la cuenta se elige la empresa (`GET /auth/empresas` lista las activas). Quien se registra queda sin rol hasta que la responsable de **su** empresa se lo asigne.
+- El rol `superadmin` es de la plataforma: su `personal.id_empresa` es `NULL`, solo administra `/empresas` y no ve datos de ninguna empresa. Ninguna empresa puede asignarlo (se crea a mano, ver abajo).
+- Una empresa desactivada (`activo = false`) no puede ingresar.
+- Bases existentes: ejecutar `database/migraciones/multiempresa.sql`; deja todo lo cargado en la primera empresa.
+
+Crear un superadmin: registrarse y asignar el rol, quitando la empresa a la persona:
+
+```sql
+UPDATE personal SET id_empresa = NULL WHERE usuario_id = (SELECT id_usuario FROM usuario WHERE email = 'admin@ejemplo.com');
+INSERT INTO personal_rol (id_personal, id_rol)
+SELECT p.id_personal, r.id_rol FROM personal p, rol r
+WHERE p.usuario_id = (SELECT id_usuario FROM usuario WHERE email = 'admin@ejemplo.com') AND r.nombre = 'superadmin';
+```
 
 Reglas que aplica la base:
 - Un evento no puede pasar a `aceptada`, `confirmado`, `preparacion` o `realizado` sin fecha, sede y cantidad de asistentes (trigger `trg_validar_evento_confirmado`).
@@ -135,11 +154,12 @@ router.delete("/:id", verificarToken, verificarRol("responsable"), eliminarEmpre
 
 ## API
 
-Todas las rutas empiezan con `/api`. Salvo `register` y `login`, todas requieren token.
+Todas las rutas empiezan con `/api`. Salvo `register`, `login` y `auth/empresas`, todas requieren token.
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/auth/register` | Registra un usuario. Body: `{ nombre, email, password }` (mín. 8 caracteres) |
+| GET | `/auth/empresas` | Empresas activas para elegir al registrarse (público) |
+| POST | `/auth/register` | Registra un usuario. Body: `{ nombre, email, password, id_empresa }` (mín. 8 caracteres) |
 | POST | `/auth/login` | Devuelve `{ token, usuario }`. Body: `{ email, password }` |
 | GET | `/auth/perfil` | Datos del usuario logueado |
 

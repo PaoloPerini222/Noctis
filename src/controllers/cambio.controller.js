@@ -6,8 +6,8 @@ const SELECT_CAMBIO = `
     from cambio_evento c
     join personal p on p.id_personal = c.registrado_por`;
 
-const existeEvento = async (idEvento) => {
-    const evento = await pool.query(`select 1 from evento where id_evento = $1`, [idEvento]);
+const existeEvento = async (idEvento, idEmpresa) => {
+    const evento = await pool.query(`select 1 from evento where id_evento = $1 and id_empresa = $2`, [idEvento, idEmpresa]);
 
     return evento.rows.length > 0;
 };
@@ -18,7 +18,7 @@ export const obtenerCambios = async (req, res) => {
         if(idEvento === null){
             return res.status(400).json({mensaje: "el id del evento no es valido"});
         }
-        if(!(await existeEvento(idEvento))){
+        if(!(await existeEvento(idEvento, req.usuario.id_empresa))){
             return res.status(404).json({mensaje: "ese evento no existe"});
         }
 
@@ -53,7 +53,7 @@ export const crearCambio = async (req, res) => {
         if(!registradoPor){
             return res.status(400).json({mensaje: "tu usuario no tiene una persona asociada para registrar el cambio"});
         }
-        if(!(await existeEvento(idEvento))){
+        if(!(await existeEvento(idEvento, req.usuario.id_empresa))){
             return res.status(404).json({mensaje: "ese evento no existe"});
         }
 
@@ -88,8 +88,11 @@ export const editarCambio = async (req, res) => {
         }
 
         const editado = await pool.query(
-            `update cambio_evento set situacion_compromisos = $1 where id_evento = $2 and id_cambio = $3 returning id_cambio`,
-            [situacion.valor, idEvento, idCambio]
+            `update cambio_evento c set situacion_compromisos = $1
+             from evento e
+             where c.id_evento = $2 and c.id_cambio = $3 and e.id_evento = c.id_evento and e.id_empresa = $4
+             returning c.id_cambio`,
+            [situacion.valor, idEvento, idCambio, req.usuario.id_empresa]
         );
         if(editado.rows.length === 0){
             return res.status(404).json({mensaje: "ese cambio no existe en el evento"});

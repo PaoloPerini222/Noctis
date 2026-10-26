@@ -33,7 +33,7 @@ const manejarErrorDb = (error, res, mensaje) => {
 
 // Toda tarea tiene responsable, fecha prevista y estado. Si depende de un servicio, ese servicio tiene que
 // ser de la propuesta del evento y no estar descartado; y no se crean tareas en eventos cerrados.
-const validarTarea = async (datos) => {
+const validarTarea = async (datos, idEmpresa) => {
     const idEvento = parseId(datos.id_evento);
     const idPersonal = parseId(datos.id_personal);
     const descripcion = typeof datos.descripcion === "string" ? datos.descripcion.trim() : "";
@@ -59,12 +59,13 @@ const validarTarea = async (datos) => {
     // Solo recibe tareas alguien del equipo con rol: una persona sin rol no puede entrar a verlas.
     const conRol = await pool.query(`
         SELECT 1 FROM personal_rol pr JOIN rol r ON r.id_rol = pr.id_rol
-        WHERE pr.id_personal = $1 AND r.nombre = ANY($2) LIMIT 1`, [idPersonal, ROLES_DE_LA_ORGANIZADORA]);
+        JOIN personal pe ON pe.id_personal = pr.id_personal
+        WHERE pr.id_personal = $1 AND pe.id_empresa = $3 AND r.nombre = ANY($2) LIMIT 1`, [idPersonal, ROLES_DE_LA_ORGANIZADORA, idEmpresa]);
     if (conRol.rows.length === 0) {
         return {error: "Esa persona no tiene un rol en la organizadora: no puede recibir tareas"};
     }
 
-    const evento = await pool.query(`SELECT estado FROM evento WHERE id_evento = $1`, [idEvento]);
+    const evento = await pool.query(`SELECT estado FROM evento WHERE id_evento = $1 AND id_empresa = $2`, [idEvento, idEmpresa]);
     if (evento.rows.length === 0) {
         return {error: "El evento indicado no existe"};
     }
@@ -93,13 +94,14 @@ const validarTarea = async (datos) => {
 };
 
 const SELECT_TAREA = `
-    SELECT *,
-        (fecha_prevista < CURRENT_DATE AND estado NOT IN ('terminada', 'cancelada')) AS vencida
-    FROM tarea`;
+    SELECT t.*,
+        (t.fecha_prevista < CURRENT_DATE AND t.estado NOT IN ('terminada', 'cancelada')) AS vencida
+    FROM tarea t
+    JOIN evento e ON e.id_evento = t.id_evento`;
 
 export const obtenerTareas = async (req, res) => {
     try {
-        const resultado = await pool.query(`${SELECT_TAREA} ORDER BY id_tarea`);
+        const resultado = await pool.query(`${SELECT_TAREA} WHERE e.id_empresa = $1 ORDER BY t.id_tarea`, [req.usuario.id_empresa]);
         res.json(resultado.rows);
     } catch (error) {
         console.error(error);
@@ -114,7 +116,7 @@ export const obtenerTarea = async (req, res) => {
             return res.status(400).json({ mensaje: "El id de la tarea no es válido" });
         }
 
-        const resultado = await pool.query(`${SELECT_TAREA} WHERE id_tarea = $1`, [id]);
+        const resultado = await pool.query(`${SELECT_TAREA} WHERE t.id_tarea = $1 AND e.id_empresa = $2`, [id, req.usuario.id_empresa]);
         if (resultado.rows.length === 0) {
             return res.status(404).json({ mensaje: "Tarea no encontrada" });
         };
@@ -128,7 +130,7 @@ export const obtenerTarea = async (req, res) => {
 // Asigna el organizador. La tarea siempre nace pendiente: el estado lo mueve su responsable o el coordinador.
 export const crearTarea = async (req, res) => {
     try {
-        const { error, datos } = await validarTarea(req.body ?? {});
+        const { error, datos } = await validarTarea(req.body ?? {}, req.usuario.id_empresa);
         if (error) {
             return res.status(400).json({ mensaje: error });
         }
@@ -154,15 +156,16 @@ export const editarTarea = async (req, res) => {
         }
 
         const actual = await pool.query(`
-            SELECT id_evento, id_personal, descripcion, fecha_prevista::text AS fecha_prevista, id_detalle
-            FROM tarea WHERE id_tarea = $1`, [id]);
+            SELECT t.id_evento, t.id_personal, t.descripcion, t.fecha_prevista::text AS fecha_prevista, t.id_detalle
+            FROM tarea t JOIN evento e ON e.id_evento = t.id_evento
+            WHERE t.id_tarea = $1 AND e.id_empresa = $2`, [id, req.usuario.id_empresa]);
         if (actual.rows.length === 0) {
             return res.status(404).json({ mensaje: "Tarea no encontrada" });
         };
 
         // El estado no se edita acá: tiene su propio endpoint.
         const { estado, ...cambios } = req.body ?? {};
-        const { error, datos } = await validarTarea({ ...actual.rows[0], ...cambios });
+        const { error, datos } = await validarTarea({ ...actual.rows[0], ...cambios }, req.usuario.id_empresa);
         if (error) {
             return res.status(400).json({ mensaje: error });
         }
@@ -197,7 +200,7 @@ export const cambiarEstadoTarea = async (req, res) => {
         const actual = await pool.query(`
             SELECT t.id_personal, t.estado, e.estado AS estado_evento
             FROM tarea t JOIN evento e ON e.id_evento = t.id_evento
-            WHERE t.id_tarea = $1`, [id]);
+            WHERE t.id_tarea = $1 AND e.id_empresa = $2`, [id, req.usuario.id_empresa]);
         if (actual.rows.length === 0) {
             return res.status(404).json({ mensaje: "Tarea no encontrada" });
         }
@@ -216,7 +219,7 @@ export const cambiarEstadoTarea = async (req, res) => {
 
         await pool.query(`UPDATE tarea SET estado = $1 WHERE id_tarea = $2`, [estado, id]);
 
-        const resultado = await pool.query(`${SELECT_TAREA} WHERE id_tarea = $1`, [id]);
+        const resultado = await pool.query(`${SELECT_TAREA} WHERE t.id_tarea = $1`, [id]);
         res.json(resultado.rows[0]);
     } catch (error) {
         console.error(error);
@@ -231,7 +234,10 @@ export const eliminarTarea = async (req, res) => {
             return res.status(400).json({ mensaje: "El id de la tarea no es válido" });
         }
 
-        const resultado = await pool.query(`DELETE FROM tarea WHERE id_tarea = $1 RETURNING *`, [id]);
+        const resultado = await pool.query(`
+            DELETE FROM tarea t USING evento e
+            WHERE t.id_tarea = $1 AND e.id_evento = t.id_evento AND e.id_empresa = $2
+            RETURNING t.*`, [id, req.usuario.id_empresa]);
         if (resultado.rows.length === 0) {
             return res.status(404).json({ mensaje: "Tarea no encontrada" });
         };

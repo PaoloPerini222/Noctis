@@ -1,6 +1,7 @@
 import pool from "../data/db.js";
 import {parseId, textoOpcional} from "../utils/validaciones.js";
 import {ESTADOS_EVENTO_CERRADOS, sincronizarEventoConPropuesta} from "../utils/reglas.js";
+import {esDeLaEmpresa} from "../utils/empresa.js";
 
 const ESTADOS_PROVEEDOR = ["pendiente", "confirmado", "no_disponible"];
 const IMPORTE_MAXIMO = 99999999.99;
@@ -95,13 +96,13 @@ const recalcularTotal = (db, idPropuesta) =>
 // - con la propuesta aceptada por el cliente, el precio queda fijo: no se agregan ni quitan servicios
 //   y solo se puede reemplazar el proveedor (y sus observaciones).
 // Devuelve {propuesta} o {status, mensaje}.
-const propuestaModificable = async (db, idPropuesta) => {
+const propuestaModificable = async (db, idPropuesta, idEmpresa) => {
     const propuesta = await db.query(
         `select p.estado, p.id_evento, e.estado as estado_evento
          from propuesta p join evento e on e.id_evento = p.id_evento
-         where p.id_propuesta = $1
+         where p.id_propuesta = $1 and e.id_empresa = $2
          for update of p`,
-        [idPropuesta]
+        [idPropuesta, idEmpresa]
     );
     const datos = propuesta.rows[0];
     if(!datos){
@@ -139,6 +140,18 @@ const proveedorOfreceServicio = async (db, idProveedor, idServicio) => {
     return ofrece.rows.length > 0;
 };
 
+// El servicio y el proveedor del detalle tienen que ser de la empresa: devuelve el mensaje de error o null.
+const errorDeEmpresa = async (db, datos, idEmpresa) => {
+    if(!await esDeLaEmpresa("servicio", datos.id_servicio, idEmpresa, db)){
+        return "el servicio indicado no existe";
+    }
+    if(datos.id_proveedor !== null && !await esDeLaEmpresa("proveedor", datos.id_proveedor, idEmpresa, db)){
+        return "el proveedor indicado no existe";
+    }
+
+    return null;
+};
+
 const errorBD = (error, res, mensajeGenerico) => {
     if(error.code === "23503"){
         return res.status(400).json({mensaje: "el servicio o el proveedor indicado no existe"});
@@ -159,7 +172,9 @@ export const obtenerDetalles = async (req, res) => {
             return res.status(400).json({mensaje: "el id de la propuesta no es valido"});
         }
 
-        const propuesta = await pool.query(`select 1 from propuesta where id_propuesta = $1`, [idPropuesta]);
+        const propuesta = await pool.query(`
+            select 1 from propuesta p join evento e on e.id_evento = p.id_evento
+            where p.id_propuesta = $1 and e.id_empresa = $2`, [idPropuesta, req.usuario.id_empresa]);
         if(propuesta.rows.length === 0){
             return res.status(404).json({mensaje: "esa propuesta no existe"});
         }
@@ -182,7 +197,11 @@ export const obtenerDetalle = async (req, res) => {
             return res.status(400).json({mensaje: "el id de la propuesta o del detalle no es valido"});
         }
 
-        const detalle = await pool.query(`${SELECT_DETALLE} where d.id_propuesta = $1 and d.id_detalle = $2`, [idPropuesta, idDetalle]);
+        const detalle = await pool.query(`
+            ${SELECT_DETALLE}
+            join propuesta pr on pr.id_propuesta = d.id_propuesta
+            join evento e on e.id_evento = pr.id_evento
+            where d.id_propuesta = $1 and d.id_detalle = $2 and e.id_empresa = $3`, [idPropuesta, idDetalle, req.usuario.id_empresa]);
         if(detalle.rows.length === 0){
             return res.status(404).json({mensaje: "ese detalle no existe en la propuesta"});
         }
@@ -211,7 +230,7 @@ export const crearDetalle = async (req, res) => {
 
         await cliente.query("begin");
 
-        const {propuesta, status, mensaje} = await propuestaModificable(cliente, idPropuesta);
+        const {propuesta, status, mensaje} = await propuestaModificable(cliente, idPropuesta, req.usuario.id_empresa);
         if(!propuesta){
             await cliente.query("rollback");
             return res.status(status).json({mensaje});
@@ -219,6 +238,11 @@ export const crearDetalle = async (req, res) => {
         if(propuesta.estado === "aceptada"){
             await cliente.query("rollback");
             return res.status(409).json({mensaje: PRECIO_FIJO});
+        }
+        const errorEmpresa = await errorDeEmpresa(cliente, datos, req.usuario.id_empresa);
+        if(errorEmpresa){
+            await cliente.query("rollback");
+            return res.status(400).json({mensaje: errorEmpresa});
         }
         if(await servicioExcluido(cliente, propuesta.id_evento, datos.id_servicio)){
             await cliente.query("rollback");
@@ -266,7 +290,7 @@ export const editarDetalle = async (req, res) => {
 
         await cliente.query("begin");
 
-        const {propuesta, status, mensaje} = await propuestaModificable(cliente, idPropuesta);
+        const {propuesta, status, mensaje} = await propuestaModificable(cliente, idPropuesta, req.usuario.id_empresa);
         if(!propuesta){
             await cliente.query("rollback");
             return res.status(status).json({mensaje});
@@ -288,6 +312,12 @@ export const editarDetalle = async (req, res) => {
         if(error){
             await cliente.query("rollback");
             return res.status(400).json({mensaje: error});
+        }
+
+        const errorEmpresa = await errorDeEmpresa(cliente, datos, req.usuario.id_empresa);
+        if(errorEmpresa){
+            await cliente.query("rollback");
+            return res.status(400).json({mensaje: errorEmpresa});
         }
 
         const anterior = actual.rows[0];
@@ -363,7 +393,7 @@ export const eliminarDetalle = async (req, res) => {
 
         await cliente.query("begin");
 
-        const {propuesta, status, mensaje} = await propuestaModificable(cliente, idPropuesta);
+        const {propuesta, status, mensaje} = await propuestaModificable(cliente, idPropuesta, req.usuario.id_empresa);
         if(!propuesta){
             await cliente.query("rollback");
             return res.status(status).json({mensaje});
@@ -420,8 +450,8 @@ export const cambiarEstadoProveedor = async (req, res) => {
              from detalle_propuesta d
              join propuesta p on p.id_propuesta = d.id_propuesta
              join evento e on e.id_evento = p.id_evento
-             where d.id_propuesta = $1 and d.id_detalle = $2`,
-            [idPropuesta, idDetalle]
+             where d.id_propuesta = $1 and d.id_detalle = $2 and e.id_empresa = $3`,
+            [idPropuesta, idDetalle, req.usuario.id_empresa]
         );
         if(actual.rows.length === 0){
             return res.status(404).json({mensaje: "ese detalle no existe en la propuesta"});

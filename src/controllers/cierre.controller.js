@@ -23,8 +23,10 @@ const SELECT_AVISOS = `
     from aviso_proveedor_cancelacion a
     join proveedor p on p.id_proveedor = a.id_proveedor`;
 
-const buscarCierre = async (db, idEvento) => {
-    const cierre = await db.query(`select *, fecha::text as fecha from cierre where id_evento = $1`, [idEvento]);
+const buscarCierre = async (db, idEmpresa, idEvento) => {
+    const cierre = await db.query(`
+        select c.*, c.fecha::text as fecha from cierre c join evento e on e.id_evento = c.id_evento
+        where c.id_evento = $1 and e.id_empresa = $2`, [idEvento, idEmpresa]);
     if(cierre.rows.length === 0){
         return null;
     }
@@ -41,7 +43,7 @@ export const obtenerCierre = async (req, res) => {
             return res.status(400).json({mensaje: "el id del evento no es valido"});
         }
 
-        const cierre = await buscarCierre(pool, idEvento);
+        const cierre = await buscarCierre(pool, req.usuario.id_empresa, idEvento);
         if(!cierre){
             return res.status(404).json({mensaje: "ese evento todavia no tiene cierre"});
         }
@@ -95,7 +97,7 @@ export const crearCierre = async (req, res) => {
 
         await cliente.query("begin");
 
-        const evento = await cliente.query(`select id_evento, estado, id_organizador from evento where id_evento = $1 for update`, [idEvento]);
+        const evento = await cliente.query(`select id_evento, estado, id_organizador from evento where id_evento = $1 and id_empresa = $2 for update`, [idEvento, req.usuario.id_empresa]);
         if(evento.rows.length === 0){
             await cliente.query("rollback");
             return res.status(404).json({mensaje: "ese evento no existe"});
@@ -157,7 +159,7 @@ export const crearCierre = async (req, res) => {
         }
 
         await cliente.query("commit");
-        res.status(201).json(await buscarCierre(pool, idEvento));
+        res.status(201).json(await buscarCierre(pool, req.usuario.id_empresa, idEvento));
 
     } catch(error){
         await cliente.query("rollback");
@@ -209,8 +211,9 @@ export const registrarAviso = async (req, res) => {
                  fecha_aviso = case when $1::text = 'pendiente' then null else coalesce($5::timestamptz, a.fecha_aviso, now()) end
              from cierre c
              where a.id_aviso = $6 and a.id_cierre = c.id_cierre and c.id_evento = $7
+               and exists (select 1 from evento e where e.id_evento = c.id_evento and e.id_empresa = $8)
              returning a.id_aviso`,
-            [estado, medio.valor, observaciones.valor, req.usuario.id_personal, fecha_aviso ?? null, idAviso, idEvento]
+            [estado, medio.valor, observaciones.valor, req.usuario.id_personal, fecha_aviso ?? null, idAviso, idEvento, req.usuario.id_empresa]
         );
         if(editado.rows.length === 0){
             return res.status(404).json({mensaje: "ese aviso no existe en el evento"});

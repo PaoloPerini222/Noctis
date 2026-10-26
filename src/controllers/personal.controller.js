@@ -1,6 +1,6 @@
 import pool from "../data/db.js";
 import {listaDeIds, parseId, textoObligatorio} from "../utils/validaciones.js";
-import {RESPONSABLE} from "../middleware/permisos.js";
+import {RESPONSABLE, SUPERADMIN} from "../middleware/permisos.js";
 
 // Personal con su email (si tiene usuario) y la lista de roles.
 const SELECT_PERSONAL = `
@@ -16,15 +16,15 @@ const SELECT_PERSONAL = `
 const sinEmailSiNoCorresponde = (req, persona) =>
     req.usuario?.roles?.includes(RESPONSABLE) ? persona : {...persona, email: null};
 
-const buscarPersonal = async (db, idPersonal) => {
-    const personal = await db.query(`${SELECT_PERSONAL} where p.id_personal = $1 group by p.id_personal, u.email`, [idPersonal]);
+const buscarPersonal = async (db, idEmpresa, idPersonal) => {
+    const personal = await db.query(`${SELECT_PERSONAL} where p.id_personal = $1 and p.id_empresa = $2 group by p.id_personal, u.email`, [idPersonal, idEmpresa]);
 
     return personal.rows[0];
 };
 
 export const obtenerPersonales = async (req, res) => {
     try{
-        const personal = await pool.query(`${SELECT_PERSONAL} group by p.id_personal, u.email order by p.nombre`);
+        const personal = await pool.query(`${SELECT_PERSONAL} where p.id_empresa = $1 group by p.id_personal, u.email order by p.nombre`, [req.usuario.id_empresa]);
 
         res.json(personal.rows.map((persona) => sinEmailSiNoCorresponde(req, persona)));
 
@@ -42,7 +42,7 @@ export const obtenerPersonal = async (req, res) => {
             return res.status(400).json({mensaje: "el id del personal no es valido"});
         }
 
-        const personal = await buscarPersonal(pool, idPersonal);
+        const personal = await buscarPersonal(pool, req.usuario.id_empresa, idPersonal);
         if(!personal){
             return res.status(404).json({mensaje: "esa persona no existe"});
         }
@@ -64,9 +64,9 @@ export const crearPersonal = async (req, res) => {
             return res.status(400).json({mensaje: error});
         }
 
-        const creado = await pool.query(`insert into personal (nombre) values ($1) returning id_personal`, [nombre]);
+        const creado = await pool.query(`insert into personal (nombre, id_empresa) values ($1, $2) returning id_personal`, [nombre, req.usuario.id_empresa]);
 
-        res.status(201).json(await buscarPersonal(pool, creado.rows[0].id_personal));
+        res.status(201).json(await buscarPersonal(pool, req.usuario.id_empresa, creado.rows[0].id_personal));
 
     } catch(error){
         console.error(error);
@@ -87,12 +87,12 @@ export const editarPersonal = async (req, res) => {
             return res.status(400).json({mensaje: error});
         }
 
-        const editado = await pool.query(`update personal set nombre = $1 where id_personal = $2 returning id_personal`, [nombre, idPersonal]);
+        const editado = await pool.query(`update personal set nombre = $1 where id_personal = $2 and id_empresa = $3 returning id_personal`, [nombre, idPersonal, req.usuario.id_empresa]);
         if(editado.rows.length === 0){
             return res.status(404).json({mensaje: "esa persona no existe"});
         }
 
-        res.json(await buscarPersonal(pool, idPersonal));
+        res.json(await buscarPersonal(pool, req.usuario.id_empresa, idPersonal));
 
     } catch(error){
         console.error(error);
@@ -110,13 +110,14 @@ export const eliminarPersonal = async (req, res) => {
         }
 
         await cliente.query("begin");
-        await cliente.query(`delete from personal_rol where id_personal = $1`, [idPersonal]);
-        const eliminado = await cliente.query(`delete from personal where id_personal = $1 returning *`, [idPersonal]);
-
-        if(eliminado.rows.length === 0){
+        const propia = await cliente.query(`select 1 from personal where id_personal = $1 and id_empresa = $2 for update`, [idPersonal, req.usuario.id_empresa]);
+        if(propia.rows.length === 0){
             await cliente.query("rollback");
             return res.status(404).json({mensaje: "esa persona no existe"});
         }
+
+        await cliente.query(`delete from personal_rol where id_personal = $1`, [idPersonal]);
+        const eliminado = await cliente.query(`delete from personal where id_personal = $1 returning *`, [idPersonal]);
 
         await cliente.query("commit");
         res.json({mensaje: "persona eliminada", personal: eliminado.rows[0]});
@@ -151,10 +152,17 @@ export const asignarRoles = async (req, res) => {
 
         await cliente.query("begin");
 
-        const existe = await cliente.query(`select 1 from personal where id_personal = $1 for update`, [idPersonal]);
+        const existe = await cliente.query(`select 1 from personal where id_personal = $1 and id_empresa = $2 for update`, [idPersonal, req.usuario.id_empresa]);
         if(existe.rows.length === 0){
             await cliente.query("rollback");
             return res.status(404).json({mensaje: "esa persona no existe"});
+        }
+
+        // El rol de superadmin es de la plataforma: una empresa no se lo puede dar a nadie.
+        const permitidos = await cliente.query(`select count(*)::int as cantidad from rol where id_rol = any($1) and nombre <> $2`, [ids, SUPERADMIN]);
+        if(permitidos.rows[0].cantidad !== new Set(ids).size){
+            await cliente.query("rollback");
+            return res.status(400).json({mensaje: "alguno de los roles indicados no existe"});
         }
 
         await cliente.query(`delete from personal_rol where id_personal = $1`, [idPersonal]);
@@ -163,7 +171,7 @@ export const asignarRoles = async (req, res) => {
         }
 
         await cliente.query("commit");
-        res.json(await buscarPersonal(pool, idPersonal));
+        res.json(await buscarPersonal(pool, req.usuario.id_empresa, idPersonal));
 
     } catch(error){
         await cliente.query("rollback");

@@ -6,7 +6,7 @@
 BEGIN;
 
 INSERT INTO public.rol (nombre)
-VALUES ('responsable'), ('organizador'), ('coordinador')
+VALUES ('responsable'), ('organizador'), ('coordinador'), ('superadmin')
 ON CONFLICT (nombre) DO NOTHING;
 
 COMMIT;
