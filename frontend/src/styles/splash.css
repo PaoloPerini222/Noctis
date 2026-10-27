@@ -69,8 +69,8 @@
 /* ---------- Marca ---------- */
 .splash-marca {
   display: flex;
-  font: 700 clamp(72px, 17vw, 190px) / .9 var(--display);
-  letter-spacing: -.02em;
+  font: 700 clamp(56px, 13vw, 150px) / .9 var(--display);
+  letter-spacing: .02em;
   color: var(--text);
 }
 

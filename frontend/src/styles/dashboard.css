@@ -104,7 +104,7 @@
 .page-head h1 {
   margin-top: 8px;
   font: 700 36px var(--display);
-  letter-spacing: -.02em;
+  letter-spacing: .02em;
 }
 
 .dash {
@@ -145,7 +145,7 @@
 
 .hero h2 {
   font: 700 clamp(28px, 3vw, 40px) var(--display);
-  letter-spacing: -.02em;
+  letter-spacing: .02em;
   overflow-wrap: anywhere;
 }
 

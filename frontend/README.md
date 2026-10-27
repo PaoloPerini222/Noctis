@@ -166,8 +166,12 @@ Cada tema define sus imágenes en `base.css` (variables `--arte`, `--cenefa`, `-
 
 ### Tipografía
 
-Una sola familia, **Space Grotesk**, en toda la app y en los dos temas (cargada desde Google Fonts en `index.html`).
-Los textos secundarios (párrafos, subtítulos, etiquetas, menú) comparten el mismo grosor (500); los títulos y botones van en 700.
+Tipografía de estilo griego, igual en los dos temas (se carga desde Google Fonts en `index.html`):
+
+- **Cinzel** (`--display`): letras de inscripción en piedra. Títulos, marca, botones, menús y etiquetas pequeñas.
+- **Philosopher** (`--sans`): humanista y legible, para el texto corrido.
+
+Los textos secundarios comparten el mismo grosor; los títulos y botones van más gruesos.
 Si se quiere más claro un texto secundario, se cambia su **color** (`--soft`, `--muted`), no su grosor.
 
 ## Despliegue

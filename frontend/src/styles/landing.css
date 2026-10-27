@@ -53,7 +53,7 @@
 
 .land-title {
   font: 700 clamp(96px, 23.5vw, 300px)/.82 var(--display);
-  letter-spacing: -.05em;
+  letter-spacing: .02em;
   margin-top: 64px;
 }
 
@@ -115,7 +115,7 @@
 
 .lineup-row b {
   font: 700 clamp(36px, 5vw, 64px) var(--display);
-  letter-spacing: -.03em;
+  letter-spacing: .02em;
 }
 
 .lineup-row span {
@@ -174,7 +174,7 @@
 
 .faq h2 {
   font: 700 56px/1 var(--display);
-  letter-spacing: -.03em;
+  letter-spacing: .02em;
 }
 
 .land-foot {

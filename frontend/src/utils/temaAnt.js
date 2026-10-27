@@ -4,7 +4,7 @@
 // Si cambiás un color en base.css, cambialo también acá (son los mismos valores).
 import { theme } from "antd";
 
-const FUENTE = '"Space Grotesk", system-ui, sans-serif';
+const FUENTE = '"Philosopher", Georgia, serif'; // texto corrido; los títulos y botones usan Cinzel (ver antd.css)
 
 // Valores comunes a los dos temas.
 const base = {

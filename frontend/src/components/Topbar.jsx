@@ -3,7 +3,8 @@ import { Input, Tag } from "antd";
 import { useAuth } from "../context/AuthContext.jsx";
 import { rolDe } from "./Layout.jsx";
 
-// Barra superior de cada página del panel: buscador (el texto lo maneja la página) y rol del usuario.
+// Barra superior de cada página del panel: buscador (el texto lo maneja la página), empresa y rol del usuario.
+// Las dos etiquetas usan los colores del tema (no los de antd): empresa resaltada con el color principal, rol en neutro.
 export default function Topbar({ busqueda, onBusqueda, placeholder }) {
   const { usuario } = useAuth();
   return (
@@ -18,11 +19,11 @@ export default function Topbar({ busqueda, onBusqueda, placeholder }) {
         placeholder={placeholder}
       />
       {usuario?.empresa && (
-        <Tag className="role-pill" color="purple" variant="outlined">
+        <Tag className="role-pill role-pill--empresa" variant="outlined">
           {usuario.empresa.toUpperCase()}
         </Tag>
       )}
-      <Tag className="role-pill" color="cyan" variant="outlined">
+      <Tag className="role-pill" variant="outlined">
         ROL · {rolDe(usuario).toUpperCase()}
       </Tag>
     </div>

@@ -1,14 +1,17 @@
 /* Base global.
    - :root define las variables de color (modo oscuro) y [data-theme="light"] las del modo claro (mármol).
      Para cambiar la paleta se toca solo acá; el resto del CSS usa var(--nombre).
-   - Reset, tipografía (Space Grotesk) y fondo de la página. */
+   - Reset, tipografía griega (Cinzel + Philosopher) y fondo de la página. */
 
 /* Modo oscuro: Ares, dios de la guerra. Negro y rojo (más rojo que negro), con estilo griego:
    columnas, grecas, estrella de Vergina, escudo con lanzas y la estatua de Marte/Ares de fondo. */
 :root {
-  --sans: "Space Grotesk", system-ui, sans-serif;
-  --display: var(--sans);
-  --mono: var(--sans); /* misma fuente en todo: las "etiquetas" ya no usan monoespaciada */
+  /* Tipografía de estilo griego (igual en los dos temas):
+     --display -> Cinzel, letras de inscripción en piedra: títulos, marca, botones y etiquetas
+     --sans    -> Philosopher, humanista y legible: texto corrido */
+  --display: "Cinzel", "Times New Roman", serif;
+  --sans: "Philosopher", Georgia, serif;
+  --mono: var(--display); /* las etiquetas pequeñas (fechas, encabezados de tabla) también van en Cinzel */
   --glass-blur: blur(16px) saturate(130%);
   color-scheme: dark;
 
