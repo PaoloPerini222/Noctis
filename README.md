@@ -106,6 +106,9 @@ Cada empresa (`empresas`) es una organizadora con sus propios datos. `personal`,
 
 - La empresa del usuario sale de `personal.id_empresa` y se lee de la base en cada pedido (no del token). Todas las consultas filtran por ella: un id de otra empresa responde `404`.
 - Al crear la cuenta se elige la empresa (`GET /auth/empresas` lista las activas). Quien se registra queda sin rol hasta que la responsable de **su** empresa se lo asigne.
+- **Una empresa nace con su responsable.** El superadmin crea la empresa con `POST /empresas` incluyendo `responsable: {nombre, email, password}`: en una sola transacción se crean la empresa, la cuenta de acceso y la persona con rol `responsable` (si algo falla no queda nada a medias). Si una empresa se queda sin responsable, `POST /empresas/:id/responsable` suma otro. `GET /empresas` devuelve también quiénes son sus responsables y cuánta gente tiene.
+- **El responsable arma su equipo con cuentas.** `POST /personal` acepta `email` y `password` (se piden juntos): crea a la persona y su usuario para que pueda ingresar, y después se le asignan roles con `PUT /personal/:id/roles`. `PUT /personal/:id` permite cambiar el email o la contraseña. Una persona puede tener varios roles (en un equipo chico alguien cumple varias responsabilidades).
+- **Protecciones:** la empresa siempre conserva al menos un responsable (no se le puede quitar el rol al último) y nadie puede eliminarse a sí mismo. Al eliminar a una persona se libera su email.
 - El rol `superadmin` es de la plataforma: su `personal.id_empresa` es `NULL`, solo administra `/empresas` y no ve datos de ninguna empresa. Ninguna empresa puede asignarlo (se crea a mano, ver abajo).
 - Una empresa desactivada (`activo = false`) no puede ingresar.
 - Bases existentes: ejecutar `database/migraciones/multiempresa.sql`; deja todo lo cargado en la primera empresa.

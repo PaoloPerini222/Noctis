@@ -6,11 +6,12 @@ import { soloFecha } from "../utils/formato.js";
 // Formulario modal genérico para crear/editar, hecho con Ant Design (Modal + Form).
 // Se arma solo a partir de la lista "campos":
 //   name -> clave del dato | label -> texto visible
-//   type -> text (por defecto), number, date, email, textarea, select o multiselect (lista de valores)
+//   type -> text (por defecto), number, date, email, password, textarea, select o multiselect (lista de valores)
 //   required, full (ocupa todo el ancho), step (solo number), options [{ value, label }] (solo select)
 //   defecto -> valor inicial al crear
 //   desde   -> (item) => valor inicial al editar, cuando el dato del registro no tiene la forma del campo
 //   ayuda   -> texto de ayuda debajo del campo
+//   minimo  -> largo mínimo del texto (solo si el campo se completó), ej. contraseñas
 // onGuardar(valores) debe devolver una promesa; si falla, el mensaje se muestra dentro del modal.
 
 const FORMATO_BACK = "YYYY-MM-DD"; // así espera las fechas el back
@@ -64,6 +65,8 @@ function Control({ campo, ...props }) {
       return <DatePicker format="DD/MM/YYYY" placeholder="dd/mm/aaaa" style={{ width: "100%" }} {...props} />;
     case "email":
       return <Input type="email" autoComplete="off" {...props} />;
+    case "password":
+      return <Input.Password autoComplete="new-password" placeholder={campo.placeholder} {...props} />;
     default:
       return <Input autoComplete="off" placeholder={campo.placeholder} {...props} />;
   }
@@ -111,6 +114,7 @@ export default function FormModal({ titulo, campos, item, onGuardar, onCerrar })
                 rules={[
                   { required: !!c.required, message: "Este campo es obligatorio" },
                   ...(c.type === "email" ? [{ type: "email", message: "Ingresá un email válido" }] : []),
+                  ...(c.minimo ? [{ min: c.minimo, message: `Mínimo ${c.minimo} caracteres` }] : []),
                 ]}
               >
                 <Control campo={c} />

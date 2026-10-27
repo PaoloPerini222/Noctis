@@ -1,5 +1,6 @@
+import bcrypt from "bcryptjs";
 import pool from "../data/db.js";
-import {listaDeIds, parseId, textoObligatorio} from "../utils/validaciones.js";
+import {listaDeIds, parseId, textoObligatorio, REGEX_EMAIL} from "../utils/validaciones.js";
 import {RESPONSABLE, SUPERADMIN} from "../middleware/permisos.js";
 
 // Personal con su email (si tiene usuario) y la lista de roles.
@@ -56,26 +57,78 @@ export const obtenerPersonal = async (req, res) => {
     }
 };
 
-// Crea personal sin usuario (alguien del equipo que no ingresa al sistema).
+const PASSWORD_MINIMA = 8;
+
+// Valida los datos de acceso que puede traer el body: {email, password}.
+//   - sin ninguno de los dos -> {} (no se toca la cuenta)
+//   - con alguno -> el email tiene que ser válido y la contraseña (si viene) de al menos 8 caracteres
+// "obligatoriosAmbos" exige los dos (al crear una cuenta nueva).
+const validarAcceso = (body, obligatoriosAmbos) => {
+    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+    const password = typeof body?.password === "string" ? body.password : "";
+    if(!email && !password){
+        return {};
+    }
+    if(obligatoriosAmbos && (!email || !password)){
+        return {error: "para que ingrese al sistema hacen falta el email y la contraseña"};
+    }
+    if(email && !REGEX_EMAIL.test(email)){
+        return {error: "el email no es valido"};
+    }
+    if(email.length > 150){
+        return {error: "el email no puede superar los 150 caracteres"};
+    }
+    if(password && password.length < PASSWORD_MINIMA){
+        return {error: `la contraseña debe tener al menos ${PASSWORD_MINIMA} caracteres`};
+    }
+
+    return {email: email || null, password: password || null};
+};
+
+// Crea una persona de la empresa. Si trae email y contraseña, también crea su usuario para que pueda ingresar
+// (todo en una transacción). Sin ellos queda como alguien del equipo que no ingresa al sistema.
 export const crearPersonal = async (req, res) => {
+    const cliente = await pool.connect();
     try{
         const {error, valor: nombre} = textoObligatorio(req.body?.nombre, "el nombre", 100);
         if(error){
             return res.status(400).json({mensaje: error});
         }
+        const acceso = validarAcceso(req.body, true);
+        if(acceso.error){
+            return res.status(400).json({mensaje: acceso.error});
+        }
 
-        const creado = await pool.query(`insert into personal (nombre, id_empresa) values ($1, $2) returning id_personal`, [nombre, req.usuario.id_empresa]);
+        await cliente.query("begin");
+        let idUsuario = null;
+        if(acceso.email){
+            const hash = await bcrypt.hash(acceso.password, 10);
+            const usuario = await cliente.query(`insert into usuario (email, password_hash) values ($1, $2) returning id_usuario`, [acceso.email, hash]);
+            idUsuario = usuario.rows[0].id_usuario;
+        }
+        const creado = await cliente.query(`insert into personal (nombre, usuario_id, id_empresa) values ($1, $2, $3) returning id_personal`, [nombre, idUsuario, req.usuario.id_empresa]);
+        await cliente.query("commit");
 
         res.status(201).json(await buscarPersonal(pool, req.usuario.id_empresa, creado.rows[0].id_personal));
 
     } catch(error){
+        await cliente.query("rollback");
+        if(error.code === "23505"){
+            return res.status(409).json({mensaje: "ese email ya está registrado"});
+        }
         console.error(error);
 
         res.status(500).json({mensaje: "no se pudo crear la persona"});
+    } finally{
+        cliente.release();
     }
 };
 
+// Edita el nombre y, si se mandan, los datos de acceso: email y/o contraseña.
+//   - la persona ya tiene usuario: se actualiza el email y/o se cambia la contraseña
+//   - todavía no tiene usuario: hacen falta email y contraseña para crearle uno
 export const editarPersonal = async (req, res) => {
+    const cliente = await pool.connect();
     try{
         const idPersonal = parseId(req.params.id);
         if(idPersonal === null){
@@ -86,18 +139,52 @@ export const editarPersonal = async (req, res) => {
         if(error){
             return res.status(400).json({mensaje: error});
         }
+        const acceso = validarAcceso(req.body, false);
+        if(acceso.error){
+            return res.status(400).json({mensaje: acceso.error});
+        }
 
-        const editado = await pool.query(`update personal set nombre = $1 where id_personal = $2 and id_empresa = $3 returning id_personal`, [nombre, idPersonal, req.usuario.id_empresa]);
-        if(editado.rows.length === 0){
+        await cliente.query("begin");
+        const actual = await cliente.query(`select usuario_id from personal where id_personal = $1 and id_empresa = $2 for update`, [idPersonal, req.usuario.id_empresa]);
+        if(actual.rows.length === 0){
+            await cliente.query("rollback");
             return res.status(404).json({mensaje: "esa persona no existe"});
         }
+
+        let idUsuario = actual.rows[0].usuario_id;
+        if(acceso.email || acceso.password){
+            if(idUsuario){
+                if(acceso.email){
+                    await cliente.query(`update usuario set email = $1 where id_usuario = $2`, [acceso.email, idUsuario]);
+                }
+                if(acceso.password){
+                    await cliente.query(`update usuario set password_hash = $1 where id_usuario = $2`, [await bcrypt.hash(acceso.password, 10), idUsuario]);
+                }
+            } else {
+                if(!acceso.email || !acceso.password){
+                    await cliente.query("rollback");
+                    return res.status(400).json({mensaje: "esa persona todavía no tiene usuario: para que ingrese hacen falta el email y la contraseña"});
+                }
+                const usuario = await cliente.query(`insert into usuario (email, password_hash) values ($1, $2) returning id_usuario`, [acceso.email, await bcrypt.hash(acceso.password, 10)]);
+                idUsuario = usuario.rows[0].id_usuario;
+            }
+        }
+
+        await cliente.query(`update personal set nombre = $1, usuario_id = $2 where id_personal = $3`, [nombre, idUsuario, idPersonal]);
+        await cliente.query("commit");
 
         res.json(await buscarPersonal(pool, req.usuario.id_empresa, idPersonal));
 
     } catch(error){
+        await cliente.query("rollback");
+        if(error.code === "23505"){
+            return res.status(409).json({mensaje: "ese email ya está registrado"});
+        }
         console.error(error);
 
         res.status(500).json({mensaje: "no se pudo editar la persona"});
+    } finally{
+        cliente.release();
     }
 };
 
@@ -109,8 +196,12 @@ export const eliminarPersonal = async (req, res) => {
             return res.status(400).json({mensaje: "el id del personal no es valido"});
         }
 
+        if(idPersonal === req.usuario.id_personal){
+            return res.status(400).json({mensaje: "no podés eliminarte a vos mismo"});
+        }
+
         await cliente.query("begin");
-        const propia = await cliente.query(`select 1 from personal where id_personal = $1 and id_empresa = $2 for update`, [idPersonal, req.usuario.id_empresa]);
+        const propia = await cliente.query(`select usuario_id from personal where id_personal = $1 and id_empresa = $2 for update`, [idPersonal, req.usuario.id_empresa]);
         if(propia.rows.length === 0){
             await cliente.query("rollback");
             return res.status(404).json({mensaje: "esa persona no existe"});
@@ -118,6 +209,10 @@ export const eliminarPersonal = async (req, res) => {
 
         await cliente.query(`delete from personal_rol where id_personal = $1`, [idPersonal]);
         const eliminado = await cliente.query(`delete from personal where id_personal = $1 returning *`, [idPersonal]);
+        // Su cuenta de acceso ya no sirve: se borra para liberar el email.
+        if(propia.rows[0].usuario_id){
+            await cliente.query(`delete from usuario where id_usuario = $1`, [propia.rows[0].usuario_id]);
+        }
 
         await cliente.query("commit");
         res.json({mensaje: "persona eliminada", personal: eliminado.rows[0]});
@@ -163,6 +258,22 @@ export const asignarRoles = async (req, res) => {
         if(permitidos.rows[0].cantidad !== new Set(ids).size){
             await cliente.query("rollback");
             return res.status(400).json({mensaje: "alguno de los roles indicados no existe"});
+        }
+
+        // La empresa siempre necesita al menos un responsable: quien aprueba propuestas y gestiona al equipo.
+        const rolResponsable = await cliente.query(`select id_rol from rol where nombre = $1`, [RESPONSABLE]);
+        const idResponsable = rolResponsable.rows[0]?.id_rol;
+        if(idResponsable && !ids.includes(idResponsable)){
+            const lo_tenia = await cliente.query(`select 1 from personal_rol where id_personal = $1 and id_rol = $2`, [idPersonal, idResponsable]);
+            if(lo_tenia.rows.length > 0){
+                const otros = await cliente.query(`
+                    select count(*)::int as cantidad from personal_rol pr join personal p on p.id_personal = pr.id_personal
+                    where pr.id_rol = $1 and p.id_empresa = $2 and p.id_personal <> $3`, [idResponsable, req.usuario.id_empresa, idPersonal]);
+                if(otros.rows[0].cantidad === 0){
+                    await cliente.query("rollback");
+                    return res.status(400).json({mensaje: "la empresa tiene que tener al menos un responsable: antes de quitarle el rol, dáselo a otra persona"});
+                }
+            }
         }
 
         await cliente.query(`delete from personal_rol where id_personal = $1`, [idPersonal]);
