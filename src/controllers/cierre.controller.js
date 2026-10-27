@@ -108,7 +108,7 @@ export const crearCierre = async (req, res) => {
         const roles = req.usuario.roles;
         const esDueno = roles.includes(ORGANIZADOR) && evento.rows[0].id_organizador === req.usuario.id_personal;
         const esResponsable = roles.includes(RESPONSABLE);
-        const permitido = resultado === "realizado" ? esDueno : origen === "cliente" ? esDueno || esResponsable : esResponsable;
+        const permitido = resultado === "realizado" ? esDueno || esResponsable : origen === "cliente" ? esDueno || esResponsable : esResponsable;
         if(!permitido){
             await cliente.query("rollback");
             return res.status(403).json({mensaje: resultado === "cancelado" && origen === "organizadora"

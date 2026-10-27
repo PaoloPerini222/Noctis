@@ -76,7 +76,7 @@ export function camposEvento({ clientes, personal, yo, conCliente }) {
     {
       name: "id_organizador", label: "Organizador", type: "select", required: true, defecto: yo,
       options: personal
-        .filter((p) => p.roles.some((r) => r.nombre === "organizador"))
+        .filter((p) => p.roles.some((r) => r.nombre === "organizador" || r.nombre === "responsable"))
         .map((p) => ({ value: p.id_personal, label: p.nombre })),
     },
     { name: "necesidades_preferencias", label: "Necesidades y preferencias", type: "textarea" },

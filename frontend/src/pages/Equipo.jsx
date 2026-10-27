@@ -9,7 +9,8 @@ const COLOR_ROL = { responsable: "var(--amber)", organizador: "var(--pink)", coo
 
 // Qué hace cada rol: se muestra al elegirlos para que la responsable sepa qué le está dando a cada persona.
 const AYUDA_ROLES =
-  "Responsable: aprueba propuestas y gestiona el equipo. Organizador: carga clientes, eventos, propuestas y proveedores. " +
+  "Responsable (la dueña de la empresa): aprueba propuestas, gestiona el equipo y puede hacer todo lo de los otros roles. " +
+  "Organizador: carga clientes, eventos, propuestas y proveedores. " +
   "Coordinador: sigue a los proveedores y las tareas. En un equipo chico una misma persona puede tener varios roles. " +
   "Sin roles no puede entrar al panel, y la empresa siempre necesita al menos un responsable.";
 
