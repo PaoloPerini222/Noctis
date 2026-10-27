@@ -3,51 +3,52 @@
      Para cambiar la paleta se toca solo acá; el resto del CSS usa var(--nombre).
    - Reset, tipografía (Space Grotesk) y fondo de la página. */
 
-/* Modo oscuro: selva. Verdes profundos apagados (sin neón), hojas y ramas de fondo. */
+/* Modo oscuro: Ares, dios de la guerra. Negro y rojo (más rojo que negro), con estilo griego:
+   columnas, grecas, estrella de Vergina, escudo con lanzas y la estatua de Marte/Ares de fondo. */
 :root {
   --sans: "Space Grotesk", system-ui, sans-serif;
   --display: var(--sans);
   --mono: var(--sans); /* misma fuente en todo: las "etiquetas" ya no usan monoespaciada */
-  --glass-blur: blur(18px) saturate(140%);
+  --glass-blur: blur(16px) saturate(130%);
   color-scheme: dark;
 
-  --bg: #0a1510;
-  --ink: 220, 245, 220;
-  --side: rgba(220, 245, 220, 0.05);
-  --panel: rgba(220, 245, 220, 0.07);
-  --raised: rgba(220, 245, 220, 0.12);
-  --text: #e9f0e2;
-  --soft: #c3d0bb;
-  --muted: #93a58f;
-  --faint: #62735f;
-  --line: rgba(220, 245, 220, 0.14);
-  --line-strong: rgba(220, 245, 220, 0.24);
-  --glass-hi: rgba(220, 245, 220, 0.12);
-  --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 var(--glass-hi);
-  --modal-bg: rgba(14, 30, 22, 0.84);
-  --overlay: rgba(4, 12, 8, 0.6);
+  --bg: #0d0506;
+  --ink: 255, 226, 222;
+  --side: rgba(8, 2, 3, 0.55);
+  --panel: rgba(20, 5, 8, 0.62);
+  --raised: rgba(120, 14, 26, 0.34);
+  --text: #fff4f1;
+  --soft: #f0dcd8;
+  --muted: #d6bcb8;
+  --faint: #b09692;
+  --line: rgba(224, 72, 90, 0.30);
+  --line-strong: rgba(224, 72, 90, 0.50);
+  --glass-hi: rgba(255, 110, 120, 0.16);
+  --glass-shadow: 0 8px 30px rgba(0, 0, 0, 0.55), inset 0 1px 0 var(--glass-hi);
+  --modal-bg: rgba(18, 5, 8, 0.9);
+  --overlay: rgba(6, 1, 2, 0.68);
 
-  --primary: #8dbd5a;
-  --on-primary: #0b1a10;
+  --primary: #d6303f;
+  --on-primary: #fff3f1;
 
-  --pink: #d8a24a;
-  --amber: #cf8a3a;
-  --lime: #8dbd5a;
-  --cyan: #4fae9c;
-  --violet: #a78bb8;
-  --red: #d9705f;
-  --red-soft: #eba090;
+  --pink: #e8475a;   /* rojo vivo: acentos y títulos */
+  --amber: #d4a24a;  /* bronce dorado */
+  --lime: #8fa86a;   /* verde oliva apagado (estados "ok") */
+  --cyan: #7ba2b4;
+  --violet: #b08aa4;
+  --red: #ff6b7a;
+  --red-soft: #ffa3ac;
 
-  --blob-1: rgba(46, 110, 64, 0.45);
-  --blob-2: rgba(30, 85, 75, 0.35);
-  --blob-3: rgba(120, 125, 40, 0.2);
+  --blob-1: rgba(168, 22, 36, 0.62);
+  --blob-2: rgba(120, 10, 26, 0.5);
+  --blob-3: rgba(70, 4, 14, 0.7);
 
-  --arte: none;
-  --cenefa: url("../assets/jungla/enredadera.svg");
-  --follaje: url("../assets/jungla/lateral.svg");         /* ramas y hojas que cuelgan por el borde izquierdo... */
-  --follaje-2: url("../assets/jungla/lateral.svg");       /* ...y por el derecho (se espeja), hasta el fondo */
-  --splash-fondo: url("../assets/jungla/dosel.svg");      /* dosel ancho, solo para el splash */
-  --figura: url("../assets/jungla/luna-nubes.svg");       /* luna entre nubes, arriba */
+  --arte: url("../assets/ares/columnas-rojas.svg");     /* columnas: hero de la landing y panel del login */
+  --cenefa: url("../assets/ares/greca-roja.svg");       /* greca que se repite */
+  --follaje: url("../assets/ares/vergina.svg");         /* estrella de Vergina, arriba a la derecha */
+  --follaje-2: url("../assets/ares/escudo.svg");        /* escudo con lanzas, abajo a la izquierda */
+  --splash-fondo: url("../assets/ares/vergina.svg");    /* el splash usa la estrella */
+  --figura: url("../assets/ares/ares.webp");            /* estatua de Ares, abajo a la derecha */
 }
 
 /* Modo claro: mármol hueso con vetas amarillentas y grises, acentos mostaza. */
@@ -60,9 +61,9 @@
   --panel: rgba(255, 252, 240, 0.6);
   --raised: rgba(255, 253, 245, 0.9);
   --text: #2a261b;
-  --soft: #4f4a3a;
-  --muted: #736c58;
-  --faint: #a59d86;
+  --soft: #3d392b;
+  --muted: #5a533f;
+  --faint: #7d755d;
   --line: rgba(60, 48, 20, 0.14);
   --line-strong: rgba(60, 48, 20, 0.26);
   --glass-hi: rgba(255, 255, 250, 0.95);

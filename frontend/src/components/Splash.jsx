@@ -6,7 +6,7 @@ import { DURACION_RAPIDA, DURACION_REDUCIDA, menosMovimiento, suscribirSplash } 
 // Colores de la barra de progreso de cada tema (de izquierda a derecha).
 const DEGRADADO = {
   light: { from: "#e3b324", to: "#b0701a" },
-  dark: { from: "#8dbd5a", to: "#d8a24a" },
+  dark: { from: "#8f1220", to: "#ff5a6a" },
 };
 
 // Splash que aparece cada vez que el usuario cambia de modo claro/oscuro.

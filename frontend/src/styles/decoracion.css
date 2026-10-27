@@ -1,17 +1,16 @@
 /* Decoración que cambia con el tema (los archivos están en src/assets/):
-     modo claro  -> columnas.svg, greca.svg, sol.svg, luna.svg y pensador.webp (estilo griego y astrología)
-     modo oscuro -> lateral.svg (ramas y hojas colgando por los bordes), luna-nubes.svg, enredadera.svg y dosel.svg (splash)
+     modo claro  -> griego/: columnas, greca, sol, luna y la foto de El Pensador (mármol y estilo astrológico)
+     modo oscuro -> ares/: columnas y greca rojas, estrella de Vergina, escudo con lanzas y la estatua de Ares
    Cada tema define sus imágenes en base.css con estas variables:
-     --arte      ilustración grande (hero de la landing y panel izquierdo del login)
-     --cenefa    franja que se repite (sidebar, cabecera del panel, separadores)
-     --follaje / --follaje-2 / --figura   capas fijas de fondo, ver más abajo
+     --arte      columnas grandes (hero de la landing y panel izquierdo del login)
+     --cenefa    greca que se repite (sidebar, cabecera del panel, separadores)
+     --follaje   adorno fijo arriba a la derecha (claro: sol | oscuro: estrella de Vergina)
+     --follaje-2 adorno fijo abajo a la izquierda (claro: luna | oscuro: escudo con lanzas)
+     --figura    estatua de fondo abajo a la derecha (claro: El Pensador | oscuro: Ares)
    Acá solo se decide dónde se ponen; para cambiar un dibujo se cambia la variable. */
 
 /* ---------- Capas fijas de fondo (detrás de todo el contenido) ----------
-   body::before -> --follaje   (oscuro: ramas colgando de arriba | claro: sol, arriba a la derecha)
-   body::after  -> --follaje-2 (claro: luna, abajo a la izquierda | oscuro: nada)
-   html::after  -> --figura    (oscuro: luna entre nubes, arriba | claro: El Pensador, abajo a la derecha)
-   z-index: -2 queda detrás de -1; así el follaje cuelga por delante de la luna. */
+   body::before -> --follaje | body::after -> --follaje-2 | html::after -> --figura (más atrás, z-index -2) */
 body::before,
 body::after,
 html::after {
@@ -36,40 +35,38 @@ html::after {
   background-image: var(--figura, none);
 }
 
-/* --- Modo oscuro: follaje que cuelga por los bordes y luna entre nubes ---
-   Las franjas bajan hasta el fondo: arriba son densas y hacia abajo van quedando pocas hojas, más chicas
-   y más transparentes (máscara), así no molestan al contenido. El centro queda libre. */
-:root:not([data-theme="light"]) body::before,
-:root:not([data-theme="light"]) body::after {
-  top: 0;
-  width: min(24vw, 300px);
-  height: 100vh;
-  background-size: auto 100%;
-  background-position: top left;
-  opacity: .95;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 30%, rgba(0, 0, 0, .6) 65%, rgba(0, 0, 0, .35) 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 30%, rgba(0, 0, 0, .6) 65%, rgba(0, 0, 0, .35) 100%);
-}
-
+/* --- Modo oscuro: estrella de Vergina, escudo con lanzas y la estatua de Ares --- */
 :root:not([data-theme="light"]) body::before {
-  left: 0;
-}
-
-:root:not([data-theme="light"]) body::after {
+  top: 0;
   right: 0;
-  transform: scaleX(-1); /* la misma franja, espejada */
-}
-
-/* La luna va arriba a la derecha, chica y tenue: si queda detrás del título o de las fichas,
-   el texto claro se pierde sobre la luna blanca. */
-:root:not([data-theme="light"])::after {
-  top: 2vh;
-  right: 2vw;
-  width: min(30vw, 400px);
-  aspect-ratio: 900 / 560;
+  width: min(26vw, 340px);
+  aspect-ratio: 620 / 420;
   background-size: contain;
   background-position: top right;
+  opacity: .8;
+}
+
+:root:not([data-theme="light"]) body::after {
+  bottom: 0;
+  left: 0;
+  width: min(24vw, 320px);
+  aspect-ratio: 620 / 420;
+  background-size: contain;
+  background-position: bottom left;
+  opacity: .24;
+}
+
+/* Foto: estatua de Marte (Ares) de Neustrelitz, dominio público, vía Wikimedia Commons.
+   Está recortada del fondo y teñida de rojo; un halo rojo la separa del negro. */
+:root:not([data-theme="light"])::after {
+  right: 1vw;
+  bottom: 0;
+  height: min(84vh, 900px);
+  aspect-ratio: 620 / 1679;
+  background-size: contain;
+  background-position: center bottom;
   opacity: .55;
+  filter: blur(.5px) drop-shadow(0 0 34px rgba(214, 48, 63, .5));
 }
 
 /* --- Modo claro: sol, luna y El Pensador --- */
@@ -233,16 +230,20 @@ html::after {
     opacity: .4;
   }
 
-  :root:not([data-theme="light"]) body::before,
+  :root:not([data-theme="light"]) body::before {
+    width: 46vw;
+    opacity: .5;
+  }
+
   :root:not([data-theme="light"]) body::after {
-    width: 30vw;
-    opacity: .75;
+    width: 44vw;
+    opacity: .2;
   }
 
   :root:not([data-theme="light"])::after {
-    top: 8vh;
-    right: -4vw;
-    width: 92vw;
+    height: 72vh;
+    right: -8vw;
+    opacity: .34;
   }
 
   .land-hero::after {
@@ -268,4 +269,13 @@ html::after {
     height: 16px;
     background-size: auto 16px;
   }
+}
+
+/* Modo oscuro: las columnas de la landing y del login se ven tenues para que Ares no quede tapado. */
+:root:not([data-theme="light"]) .land-hero::after {
+  opacity: .4;
+}
+
+:root:not([data-theme="light"]) .auth-art::before {
+  opacity: .55;
 }

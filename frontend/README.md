@@ -108,7 +108,8 @@ CSS dividido por sección, todo importado desde `styles/index.css`:
 | `dashboard.css` | Sidebar, tablas, tarjetas, navegación móvil |
 | `modal.css` | Ventana de formularios |
 | `tipografia.css` | Títulos grandes, iguales en los dos temas |
-| `decoracion.css` | Ilustraciones de fondo de cada tema (griego en claro, selva y luna en oscuro) |
+| `decoracion.css` | Ilustraciones de fondo de cada tema (griego dorado en claro, griego rojo con Ares en oscuro) |
+| `lineas.css` | Solo modo oscuro: líneas, marcos y títulos en mayúsculas |
 | `splash.css` | Pantalla de entrada |
 | `public.css` | Página pública del evento |
 
@@ -136,13 +137,15 @@ Reglas del proyecto:
 - `pensador.webp` es una foto real de *El Pensador* de Rodin (The Metropolitan Museum of Art, Open Access / CC0, vía Wikimedia Commons),
   recortada del fondo y teñida en tonos hueso; se muestra tenue y levemente difuminada abajo a la derecha.
 
-**Modo oscuro: selva de noche** (`src/assets/jungla/`)
-- Paleta de verdes apagados (sin neón), acento verde hoja y dorado.
-- `lateral.svg`: ramas con hojas que cuelgan por los dos bordes (la franja derecha es la misma, espejada) **hasta el fondo**;
-  arriba son densas y hacia abajo quedan menos hojas, más chicas y más transparentes, para no molestar al contenido.
-- `luna-nubes.svg`: luna con cráteres y nubes, fija al fondo en todas las pantallas. Las nubes usan ruido fractal de SVG
-  (filtros `feTurbulence`), no son imágenes.
-- `enredadera.svg` es la cenefa que se repite; `dosel.svg` es el follaje ancho que solo usa el splash.
+**Modo oscuro: Ares, dios de la guerra** (`src/assets/ares/`)
+- Negro y rojo (más rojo que negro), también de estilo griego. Texto claro de alto contraste: los colores secundarios
+  (`--soft`, `--muted`, `--faint`) son opacos y legibles; no se usan transparencias en las letras.
+- `columnas-rojas.svg` y `greca-roja.svg`: las mismas piezas del modo claro, en rojo.
+- `vergina.svg`: estrella de Vergina (arriba a la derecha). `escudo.svg`: escudo con lambda y lanzas (abajo a la izquierda).
+- `ares.webp`: foto real de una estatua de Marte/Ares (Neustrelitz, dominio público, vía Wikimedia Commons), recortada del
+  fondo y teñida de rojo, con un halo rojo; va de fondo abajo a la derecha.
+- `lineas.css` aplica solo en oscuro el estilo griego a la tipografía y los bordes: títulos en mayúsculas espaciadas,
+  línea roja bajo cada título y marcos de doble línea en tarjetas, tablas y ventanas.
 
 Cada tema define sus imágenes en `base.css` (variables `--arte`, `--cenefa`, `--follaje`, `--follaje-2`, `--figura`) y
 `decoracion.css` decide dónde se ponen. Todo son SVG, así que escalan sin perder calidad.
@@ -151,7 +154,7 @@ Cada tema define sus imágenes en `base.css` (variables `--arte`, `--cenefa`, `-
 
 - El HTML está en `index.html`, así que se ve apenas se abre la página, antes de que cargue React. `utils/splash.js` controla
   cuánto dura (unos 3 s; menos de medio segundo si el dispositivo pide reducir animaciones), espera a las fuentes y lo desvanece.
-- Toma el tema del dispositivo (o el guardado): en oscuro cae el follaje y aparece la luna; en claro, las columnas y el sol.
+- Toma el tema del dispositivo (o el guardado): muestra las columnas y el sol (claro) o la estrella de Vergina (oscuro) con la barra de carga centrada.
 - **También se muestra cada vez que se cambia de modo**, en versión más rápida (`alternarTema()` en `utils/tema.js` llama a `mostrarSplash`).
 
 ## Responsive

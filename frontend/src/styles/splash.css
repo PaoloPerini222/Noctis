@@ -41,53 +41,25 @@
   background-repeat: no-repeat;
 }
 
-/* Oscuro: el follaje cae desde arriba y la luna entre nubes flota detrás. */
+/* Arriba a la derecha el adorno del tema (sol o estrella de Vergina) y, detrás del logo, las columnas tenues. */
 .splash::before {
   top: 0;
-  left: 0;
-  width: 100%;
-  height: min(60vh, 560px);
-  background-image: var(--splash-fondo, var(--follaje, none));
-  background-size: cover;
-  background-position: top center;
-  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
-  animation: splash-caer calc(1.6s * var(--ritmo, 1)) cubic-bezier(.2, .7, .2, 1) both;
-}
-
-.splash::after {
-  top: 4vh;
-  right: 8vw;
-  width: min(54vw, 700px);
-  aspect-ratio: 800 / 480;
-  background-image: var(--figura, none);
-  background-size: contain;
-  z-index: -1;
-  animation: splash-flotar 6s ease-in-out infinite alternate, splash-aparecer 1.4s ease both;
-}
-
-/* Claro: sol arriba a la derecha y columnas grandes y tenues detrás del logo. */
-:root[data-theme="light"] .splash::before {
-  top: 0;
   right: 0;
-  left: auto;
   width: min(44vw, 600px);
-  height: auto;
   aspect-ratio: 620 / 420;
+  background-image: var(--splash-fondo, none);
   background-size: contain;
   background-position: top right;
-  -webkit-mask-image: none;
-  mask-image: none;
   animation: splash-aparecer calc(1.4s * var(--ritmo, 1)) ease both;
 }
 
-:root[data-theme="light"] .splash::after {
+.splash::after {
   top: 50%;
   left: 50%;
-  right: auto;
   width: min(80vw, 640px);
   aspect-ratio: 1;
-  background-image: var(--arte);
+  background-image: var(--arte, none);
+  background-size: contain;
   background-position: center;
   opacity: .28;
   transform: translate(-50%, -50%);
@@ -162,16 +134,6 @@
 
 /* ---------- Animaciones ---------- */
 /* --ritmo (1 = normal, .6 = rápido) lo pone utils/splash.js al volver a mostrarlo por un cambio de modo. */
-@keyframes splash-caer {
-  from { transform: translateY(-100%); }
-  to { transform: none; }
-}
-
-@keyframes splash-flotar {
-  from { transform: translate(0, 0); }
-  to { transform: translate(-14px, 10px); }
-}
-
 @keyframes splash-aparecer {
   from { opacity: 0; }
 }

@@ -118,6 +118,10 @@
   min-height: 220px;
 }
 
+.hero h2 {
+  color: var(--text);
+}
+
 .hero .ant-card-body {
   height: 100%;
   min-height: 220px;
