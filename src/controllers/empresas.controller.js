@@ -15,13 +15,15 @@ const validarResponsable = (datos) => {
     if (nombre.length > 100) return { error: "El nombre del responsable no puede superar los 100 caracteres" };
     if (!REGEX_EMAIL.test(email) || email.length > 150) return { error: "El email del responsable no es válido" };
     if (password.length < 8) return { error: "La contraseña del responsable debe tener al menos 8 caracteres" };
-    return { valor: { nombre, email, password } };
+    const apellido = typeof datos?.apellido === "string" && datos.apellido.trim() ? datos.apellido.trim() : null;
+    if (apellido && apellido.length > 100) return { error: "El apellido del responsable no puede superar los 100 caracteres" };
+    return { valor: { nombre, apellido, email, password } };
 };
 
 // Crea el usuario, la persona de la empresa y le da el rol de responsable (dentro de la transacción de quien llama).
-const insertarResponsable = async (db, idEmpresa, { nombre, email, password }) => {
+const insertarResponsable = async (db, idEmpresa, { nombre, apellido, email, password }) => {
     const usuario = await db.query(`INSERT INTO usuario (email, password_hash) VALUES ($1, $2) RETURNING id_usuario`, [email, await bcrypt.hash(password, 10)]);
-    const personal = await db.query(`INSERT INTO personal (nombre, usuario_id, id_empresa) VALUES ($1, $2, $3) RETURNING id_personal`, [nombre, usuario.rows[0].id_usuario, idEmpresa]);
+    const personal = await db.query(`INSERT INTO personal (nombre, apellido, usuario_id, id_empresa) VALUES ($1, $2, $3, $4) RETURNING id_personal`, [nombre, apellido, usuario.rows[0].id_usuario, idEmpresa]);
     await db.query(`INSERT INTO personal_rol (id_personal, id_rol) SELECT $1, id_rol FROM rol WHERE nombre = $2`, [personal.rows[0].id_personal, RESPONSABLE]);
     return personal.rows[0].id_personal;
 };
@@ -36,7 +38,7 @@ const errorDeUnicidad = (error) => {
 const SELECT_EMPRESAS = `
     SELECT e.*,
            (SELECT count(*)::int FROM personal p WHERE p.id_empresa = e.id_empresa) AS personal,
-           COALESCE((SELECT json_agg(json_build_object('nombre', p.nombre, 'email', u.email) ORDER BY p.nombre)
+           COALESCE((SELECT json_agg(json_build_object('nombre', p.nombre_completo, 'email', u.email) ORDER BY p.nombre)
                      FROM personal p
                      JOIN personal_rol pr ON pr.id_personal = p.id_personal
                      JOIN rol r ON r.id_rol = pr.id_rol AND r.nombre = '${RESPONSABLE}'

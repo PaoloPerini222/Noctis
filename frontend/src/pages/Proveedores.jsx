@@ -16,12 +16,13 @@ export default function Proveedores() {
     id: "id_proveedor",
     puedeCrear: (p) => p.esOrganizador,
     puedeEditar: (p) => p.esOrganizador,
-    buscar: (p) => `${p.nombre} ${p.contacto ?? ""} ${p.servicios.map((s) => s.nombre).join(" ")}`,
+    buscar: (p) => `${p.nombre} ${p.contacto ?? ""} ${p.telefono ?? ""} ${p.email ?? ""} ${p.servicios.map((s) => s.nombre).join(" ")}`,
     columnas: [
       { titulo: "Proveedor", render: (p) => p.nombre },
       { titulo: "Contacto", render: (p) => p.contacto ?? "—" },
       { titulo: "Teléfono", render: (p) => p.telefono ?? "—" },
       { titulo: "Email", render: (p) => p.email ?? "—" },
+      { titulo: "Dirección", render: (p) => p.direccion ?? "—" },
       {
         titulo: "Servicios",
         render: (p) => (p.servicios.length ? p.servicios.map((s) => <Tag key={s.id_servicio}>{s.nombre}</Tag>) : "—"),
@@ -29,9 +30,10 @@ export default function Proveedores() {
     ],
     campos: [
       { name: "nombre", label: "Nombre o empresa", required: true, full: true },
-      { name: "contacto", label: "Persona de contacto" },
+      { name: "contacto", label: "Persona de contacto (nombre y apellido)" },
       { name: "telefono", label: "Teléfono" },
-      { name: "email", label: "Email", type: "email", full: true },
+      { name: "email", label: "Email", type: "email" },
+      { name: "direccion", label: "Dirección" },
       {
         name: "servicios", label: "Servicios que ofrece", type: "multiselect", full: true,
         options: servicios.map((s) => ({ value: s.id_servicio, label: s.nombre })),

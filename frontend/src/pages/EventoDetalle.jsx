@@ -14,7 +14,7 @@ import TablaTareas from "../components/TablaTareas.jsx";
 import useCatalogos from "../hooks/useCatalogos.js";
 import usePermisos from "../hooks/usePermisos.js";
 import { mensajeError } from "../services/api.js";
-import { diasHasta, fechaCorta } from "../utils/formato.js";
+import { contacto, diasHasta, fechaCorta } from "../utils/formato.js";
 import { camposEvento, colorDe, ESTADOS } from "./Eventos.jsx";
 
 const CERRADOS = ["realizado", "cancelado"];
@@ -28,7 +28,7 @@ export default function EventoDetalle() {
   const [params, setParams] = useSearchParams();
   const { message } = App.useApp();
   const permisos = usePermisos();
-  const { clientes, personal, nombreCliente, nombrePersona } = useCatalogos(["clientes", "personal"]);
+  const { clientes, personal, nombreCliente, nombrePersona, cliente: datosCliente, persona: datosPersona } = useCatalogos(["clientes", "personal"]);
 
   const [evento, setEvento] = useState(null);
   const [propuesta, setPropuesta] = useState(null);
@@ -207,8 +207,24 @@ export default function EventoDetalle() {
         column={{ xs: 1, sm: 2, lg: 3 }}
         className="ficha-datos ficha-evento"
         items={[
-          { key: "cliente", label: "Cliente", children: nombreCliente(evento.id_cliente) },
-          { key: "organizador", label: "Organizador", children: evento.id_organizador === permisos.yo ? "Vos" : nombrePersona(evento.id_organizador) },
+          {
+            key: "cliente", label: "Cliente",
+            children: (
+              <div className="dato-contacto">
+                <span>{nombreCliente(evento.id_cliente)}</span>
+                <span className="muted">{contacto(datosCliente(evento.id_cliente)?.telefono, datosCliente(evento.id_cliente)?.email)}</span>
+              </div>
+            ),
+          },
+          {
+            key: "organizador", label: "Organizador",
+            children: (
+              <div className="dato-contacto">
+                <span>{evento.id_organizador === permisos.yo ? "Vos" : nombrePersona(evento.id_organizador)}</span>
+                <span className="muted">{contacto(datosPersona(evento.id_organizador)?.telefono, datosPersona(evento.id_organizador)?.email_contacto)}</span>
+              </div>
+            ),
+          },
           { key: "asistentes", label: "Asistentes estimados", children: evento.cant_asistentes_estimada != null ? Number(evento.cant_asistentes_estimada).toLocaleString("es-AR") : <span className="muted">Pendiente de aclaración</span> },
           { key: "sede", label: "Sede", children: evento.sede_prevista ?? <span className="muted">Pendiente de aclaración</span> },
           { key: "estado_sede", label: "Disponibilidad de la sede", children: <Estado estado={evento.estado_sede} color={evento.estado_sede === "confirmada" ? "var(--lime)" : "var(--amber)"} /> },

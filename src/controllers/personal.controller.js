@@ -1,11 +1,11 @@
 import bcrypt from "bcryptjs";
 import pool from "../data/db.js";
-import {listaDeIds, parseId, textoObligatorio, REGEX_EMAIL} from "../utils/validaciones.js";
+import {listaDeIds, parseId, textoObligatorio, textoOpcional, REGEX_EMAIL} from "../utils/validaciones.js";
 import {RESPONSABLE, SUPERADMIN} from "../middleware/permisos.js";
 
 // Personal con su email (si tiene usuario) y la lista de roles.
 const SELECT_PERSONAL = `
-    select p.id_personal, p.nombre, p.usuario_id, u.email,
+    select p.id_personal, p.nombre, p.apellido, p.nombre_completo, p.telefono, p.email_contacto, p.usuario_id, u.email,
            coalesce(json_agg(json_build_object('id_rol', r.id_rol, 'nombre', r.nombre) order by r.nombre)
                     filter (where r.id_rol is not null), '[]') as roles
     from personal p
@@ -59,6 +59,23 @@ export const obtenerPersonal = async (req, res) => {
 
 const PASSWORD_MINIMA = 8;
 
+// Datos personales: el nombre es obligatorio; apellido, teléfono y email de contacto son opcionales.
+const validarDatosPersonales = (body) => {
+    const nombre = textoObligatorio(body?.nombre, "el nombre", 100);
+    const apellido = textoOpcional(body?.apellido, "el apellido", 100);
+    const telefono = textoOpcional(body?.telefono, "el telefono", 30);
+    const emailContacto = textoOpcional(body?.email_contacto, "el email de contacto", 150);
+    const error = nombre.error ?? apellido.error ?? telefono.error ?? emailContacto.error;
+    if(error){
+        return {error};
+    }
+    if(emailContacto.valor && !REGEX_EMAIL.test(emailContacto.valor)){
+        return {error: "el email de contacto no es valido"};
+    }
+
+    return {datos: {nombre: nombre.valor, apellido: apellido.valor, telefono: telefono.valor, email_contacto: emailContacto.valor}};
+};
+
 // Valida los datos de acceso que puede traer el body: {email, password}.
 //   - sin ninguno de los dos -> {} (no se toca la cuenta)
 //   - con alguno -> el email tiene que ser válido y la contraseña (si viene) de al menos 8 caracteres
@@ -90,9 +107,9 @@ const validarAcceso = (body, obligatoriosAmbos) => {
 export const crearPersonal = async (req, res) => {
     const cliente = await pool.connect();
     try{
-        const {error, valor: nombre} = textoObligatorio(req.body?.nombre, "el nombre", 100);
-        if(error){
-            return res.status(400).json({mensaje: error});
+        const personales = validarDatosPersonales(req.body);
+        if(personales.error){
+            return res.status(400).json({mensaje: personales.error});
         }
         const acceso = validarAcceso(req.body, true);
         if(acceso.error){
@@ -106,7 +123,10 @@ export const crearPersonal = async (req, res) => {
             const usuario = await cliente.query(`insert into usuario (email, password_hash) values ($1, $2) returning id_usuario`, [acceso.email, hash]);
             idUsuario = usuario.rows[0].id_usuario;
         }
-        const creado = await cliente.query(`insert into personal (nombre, usuario_id, id_empresa) values ($1, $2, $3) returning id_personal`, [nombre, idUsuario, req.usuario.id_empresa]);
+        const {nombre, apellido, telefono, email_contacto} = personales.datos;
+        const creado = await cliente.query(
+            `insert into personal (nombre, apellido, telefono, email_contacto, usuario_id, id_empresa) values ($1, $2, $3, $4, $5, $6) returning id_personal`,
+            [nombre, apellido, telefono, email_contacto, idUsuario, req.usuario.id_empresa]);
         await cliente.query("commit");
 
         res.status(201).json(await buscarPersonal(pool, req.usuario.id_empresa, creado.rows[0].id_personal));
@@ -135,9 +155,9 @@ export const editarPersonal = async (req, res) => {
             return res.status(400).json({mensaje: "el id del personal no es valido"});
         }
 
-        const {error, valor: nombre} = textoObligatorio(req.body?.nombre, "el nombre", 100);
-        if(error){
-            return res.status(400).json({mensaje: error});
+        const personales = validarDatosPersonales(req.body);
+        if(personales.error){
+            return res.status(400).json({mensaje: personales.error});
         }
         const acceso = validarAcceso(req.body, false);
         if(acceso.error){
@@ -170,7 +190,10 @@ export const editarPersonal = async (req, res) => {
             }
         }
 
-        await cliente.query(`update personal set nombre = $1, usuario_id = $2 where id_personal = $3`, [nombre, idUsuario, idPersonal]);
+        const {nombre, apellido, telefono, email_contacto} = personales.datos;
+        await cliente.query(
+            `update personal set nombre = $1, apellido = $2, telefono = $3, email_contacto = $4, usuario_id = $5 where id_personal = $6`,
+            [nombre, apellido, telefono, email_contacto, idUsuario, idPersonal]);
         await cliente.query("commit");
 
         res.json(await buscarPersonal(pool, req.usuario.id_empresa, idPersonal));

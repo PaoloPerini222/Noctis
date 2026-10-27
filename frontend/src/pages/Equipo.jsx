@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Estado from "../components/Estado.jsx";
 import PaginaCrud from "../components/PaginaCrud.jsx";
 import { personalApi, rolesApi } from "../api/equipo.js";
-import { etiqueta } from "../utils/formato.js";
+import { etiqueta, nombreCompleto } from "../utils/formato.js";
 
 // Color de cada rol (variables del tema, así se ven bien en claro y en oscuro).
 const COLOR_ROL = { responsable: "var(--amber)", organizador: "var(--pink)", coordinador: "var(--cyan)" };
@@ -33,10 +33,12 @@ export default function Equipo() {
     id: "id_personal",
     puedeCrear: (p) => p.esResponsable,
     puedeEditar: (p) => p.esResponsable,
-    buscar: (p) => `${p.nombre} ${p.email ?? ""} ${p.roles.map((r) => r.nombre).join(" ")}`,
+    buscar: (p) => `${nombreCompleto(p)} ${p.telefono ?? ""} ${p.email_contacto ?? ""} ${p.email ?? ""} ${p.roles.map((r) => r.nombre).join(" ")}`,
     columnas: [
-      { titulo: "Nombre", render: (p) => p.nombre },
-      { titulo: "Email", render: (p) => p.email ?? <span className="muted">Sin acceso al sistema</span> },
+      { titulo: "Nombre y apellido", render: (p) => nombreCompleto(p) },
+      { titulo: "Teléfono", render: (p) => p.telefono ?? "—" },
+      { titulo: "Email", render: (p) => p.email_contacto ?? p.email ?? "—" },
+      { titulo: "Acceso", render: (p) => (p.usuario_id ? "Con cuenta" : <span className="muted">Sin acceso al sistema</span>) },
       {
         titulo: "Roles",
         render: (p) =>
@@ -46,7 +48,10 @@ export default function Equipo() {
       },
     ],
     campos: [
-      { name: "nombre", label: "Nombre", required: true, full: true },
+      { name: "nombre", label: "Nombre", required: true },
+      { name: "apellido", label: "Apellido" },
+      { name: "telefono", label: "Teléfono de contacto" },
+      { name: "email_contacto", label: "Email de contacto", type: "email", ayuda: "Para comunicarse con la persona. Puede ser distinto del email con el que ingresa." },
       {
         name: "email", label: "Email de acceso", type: "email",
         ayuda: "Con el email y la contraseña la persona puede ingresar al sistema. Si no los cargás, queda solo como parte del equipo.",

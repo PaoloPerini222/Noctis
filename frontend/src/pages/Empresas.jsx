@@ -39,17 +39,18 @@ const config = {
       ayuda: "Una empresa desactivada no puede ingresar ni aparece al crear una cuenta.",
     },
     // El responsable es obligatorio al crear la empresa; al editar sirve para sumar otro.
-    { name: "responsable_nombre", label: "Responsable: nombre", full: true, ayuda: "La dueña o el dueño de la empresa. Al crear la empresa es obligatorio; al editarla, completalo para sumar otro responsable." },
+    { name: "responsable_nombre", label: "Responsable: nombre", ayuda: "La dueña o el dueño de la empresa. Al crear la empresa es obligatorio; al editarla, completalo para sumar otro responsable." },
+    { name: "responsable_apellido", label: "Responsable: apellido" },
     { name: "responsable_email", label: "Responsable: email de acceso", type: "email" },
     { name: "responsable_password", label: "Responsable: contraseña", type: "password", minimo: 8, ayuda: "Mínimo 8 caracteres." },
   ],
-  guardar: async (item, { responsable_nombre, responsable_email, responsable_password, ...datos }) => {
+  guardar: async (item, { responsable_nombre, responsable_apellido, responsable_email, responsable_password, ...datos }) => {
     const hayResponsable = Boolean(responsable_nombre || responsable_email || responsable_password);
     const completo = Boolean(responsable_nombre && responsable_email && responsable_password);
     if (hayResponsable && !completo) {
       throw new Error("Para el responsable completá el nombre, el email y la contraseña.");
     }
-    const responsable = { nombre: responsable_nombre, email: responsable_email, password: responsable_password };
+    const responsable = { nombre: responsable_nombre, apellido: responsable_apellido, email: responsable_email, password: responsable_password };
 
     if (!item) {
       if (!completo) throw new Error("Una empresa necesita su responsable: completá nombre, email y contraseña.");

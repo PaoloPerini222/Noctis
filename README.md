@@ -112,6 +112,7 @@ Cada empresa (`empresas`) es una organizadora con sus propios datos. `personal`,
 - **Protecciones:** la empresa siempre conserva al menos un responsable (no se le puede quitar el rol al último) y nadie puede eliminarse a sí mismo. Al eliminar a una persona se libera su email.
 - El rol `superadmin` es de la plataforma: su `personal.id_empresa` es `NULL`, solo administra `/empresas` y no ve datos de ninguna empresa. Ninguna empresa puede asignarlo (se crea a mano, ver abajo).
 - Una empresa desactivada (`activo = false`) no puede ingresar.
+- **Datos de contacto y nombre completo.** `personal` suma `apellido`, `telefono` y `email_contacto`; `cliente` suma `apellido` y `direccion`; `proveedor` suma `direccion`. `nombre_completo` (nombre + apellido) es una columna calculada por la base y es lo que se muestra en listas, selectores, fichas y el enlace público. **Bases existentes: ejecutar `database/migraciones/datos_contacto.sql`** (se puede repetir, no pisa datos; el backend nuevo la necesita). Las bases nuevas ya la traen en `00_schema.sql`.
 - Bases existentes: ejecutar `database/migraciones/multiempresa.sql`; deja todo lo cargado en la primera empresa.
 
 Crear un superadmin: registrarse y asignar el rol, quitando la empresa a la persona:

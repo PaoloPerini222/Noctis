@@ -393,3 +393,10 @@
     scroll-snap-align: start;
   }
 }
+
+/* Dato con su contacto debajo (ficha del evento): nombre arriba y teléfono / email en una línea aparte. */
+.dato-contacto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}

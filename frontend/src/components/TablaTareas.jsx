@@ -7,7 +7,7 @@ import useCatalogos from "../hooks/useCatalogos.js";
 import usePermisos from "../hooks/usePermisos.js";
 import useRecurso from "../hooks/useRecurso.js";
 import { mensajeError } from "../services/api.js";
-import { etiqueta, fechaCorta } from "../utils/formato.js";
+import { etiqueta, fechaCorta, nombreCompleto } from "../utils/formato.js";
 import Estado from "./Estado.jsx";
 import FormModal from "./FormModal.jsx";
 
@@ -98,7 +98,7 @@ export default function TablaTareas({ evento, servicios = [], busqueda = "" }) {
         }]),
     {
       name: "id_personal", label: "Responsable", type: "select", required: true,
-      options: personal.filter((p) => p.roles.length).map((p) => ({ value: p.id_personal, label: p.nombre })),
+      options: personal.filter((p) => p.roles.length).map((p) => ({ value: p.id_personal, label: nombreCompleto(p) })),
     },
     { name: "fecha_prevista", label: "Fecha prevista", type: "date", required: true },
     ...(evento

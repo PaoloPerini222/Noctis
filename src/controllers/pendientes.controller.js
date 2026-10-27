@@ -19,7 +19,7 @@ export const obtenerPendientes = async (req, res) => {
         const [tareas, servicios, propuestas, proximos] = await Promise.all([
             pool.query(
                 `select t.*, (t.fecha_prevista < current_date) as vencida,
-                        e.tipo_evento, e.fecha::text as fecha_evento, p.nombre as responsable
+                        e.tipo_evento, e.fecha::text as fecha_evento, p.nombre_completo as responsable
                  from tarea t
                  join evento e on e.id_evento = t.id_evento
                  join personal p on p.id_personal = t.id_personal
