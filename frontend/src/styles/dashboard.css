@@ -361,3 +361,31 @@
     color: var(--primary);
   }
 }
+
+/* ---------- Celular: cabecera de página y barra inferior ---------- */
+@media (max-width: 960px) {
+  /* El botón "Nuevo ..." baja debajo del título si no entra al lado, en vez de salirse de la pantalla. */
+  .page-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .page-head > div {
+    min-width: 0;
+  }
+
+  .page-head h1 {
+    overflow-wrap: anywhere;
+  }
+
+  /* La barra inferior se desliza: el borde derecho se desvanece para que se note que hay más secciones. */
+  .mobile-nav {
+    -webkit-mask-image: linear-gradient(to right, #000 82%, transparent);
+    mask-image: linear-gradient(to right, #000 82%, transparent);
+    scroll-snap-type: x proximity;
+  }
+
+  .mobile-nav a {
+    scroll-snap-align: start;
+  }
+}

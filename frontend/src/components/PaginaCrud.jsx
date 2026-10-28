@@ -2,7 +2,9 @@ import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from "@ant
 import { Alert, App, Button, Empty, Popconfirm, Space, Table, Tooltip } from "antd";
 import { useMemo, useState } from "react";
 import useRecurso from "../hooks/useRecurso.js";
+import { mensajeError } from "../services/api.js";
 import { fechaLarga } from "../utils/formato.js";
+import usePermisos from "../hooks/usePermisos.js";
 import FormModal from "./FormModal.jsx";
 import Topbar from "./Topbar.jsx";
 
@@ -15,10 +17,17 @@ import Topbar from "./Topbar.jsx";
 //   columnas  -> [{ titulo, render(item) }] columnas de la tabla
 //   campos    -> campos del formulario (ver FormModal)
 //   buscar    -> (item) => texto sobre el que filtra el buscador
+//   puedeCrear  -> (permisos) => bool; si es false no se muestra "Nuevo" (por defecto true)
+//   puedeEditar -> (permisos, item) => bool; si es false la fila no tiene editar ni eliminar (por defecto true)
+//   guardar   -> async (item | null, valores) para guardados especiales (ej. datos + roles); si no, crea/edita el recurso
+//   acciones  -> (item) => botones extra de la fila (ej. "Abrir evento")
 // Ejemplo completo en pages/Clientes.jsx. Estados internos:
 //   busqueda -> texto del buscador | editando -> null, "nuevo" o el item que se edita
 export default function PaginaCrud({ config }) {
-  const { titulo, singular, femenino, api, id, columnas, campos, buscar } = config;
+  const { titulo, singular, femenino, api, id, columnas, campos, buscar, acciones } = config;
+  const permisos = usePermisos();
+  const puedeCrear = config.puedeCrear?.(permisos) ?? true;
+  const puedeEditar = (item) => config.puedeEditar?.(permisos, item) ?? true;
   const nuevo = `${femenino ? "Nueva" : "Nuevo"} ${singular}`;
   const { message } = App.useApp();
   const { items, cargando, error, recargar, guardar, eliminar } = useRecurso(api, id);
@@ -55,6 +64,9 @@ export default function PaginaCrud({ config }) {
       align: "right",
       render: (_, item) => (
         <Space size={4} wrap={false}>
+          {acciones?.(item)}
+          {puedeEditar(item) && (
+          <>
           <Tooltip title="Editar">
             <Button type="text" icon={<EditOutlined />} aria-label="Editar" onClick={() => setEditando(item)} />
           </Tooltip>
@@ -69,6 +81,8 @@ export default function PaginaCrud({ config }) {
               <Button type="text" danger icon={<DeleteOutlined />} aria-label="Eliminar" />
             </Tooltip>
           </Popconfirm>
+          </>
+          )}
         </Space>
       ),
     },
@@ -83,9 +97,11 @@ export default function PaginaCrud({ config }) {
           <div className="eyebrow">{fechaLarga()}</div>
           <h1>{titulo}</h1>
         </div>
-        <Button type="primary" size="large" icon={<PlusOutlined />} onClick={() => setEditando("nuevo")}>
-          {nuevo}
-        </Button>
+        {puedeCrear && (
+          <Button type="primary" size="large" icon={<PlusOutlined />} onClick={() => setEditando("nuevo")}>
+            {nuevo}
+          </Button>
+        )}
       </div>
 
       {error && (
@@ -133,7 +149,16 @@ export default function PaginaCrud({ config }) {
           titulo={editando === "nuevo" ? nuevo : `Editar ${singular}`}
           campos={campos}
           item={editando === "nuevo" ? null : editando}
-          onGuardar={(valores) => guardar(editando === "nuevo" ? null : editando, valores)}
+          onGuardar={async (valores) => {
+            const item = editando === "nuevo" ? null : editando;
+            if (!config.guardar) return guardar(item, valores);
+            try {
+              await config.guardar(item, valores);
+            } catch (e) {
+              throw new Error(mensajeError(e, "No se pudo guardar"));
+            }
+            await recargar();
+          }}
           onCerrar={() => setEditando(null)}
         />
       )}

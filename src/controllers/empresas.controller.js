@@ -49,17 +49,20 @@ export const crearEmpresa = async (req, res) => {
 export const editarEmpresa = async (req, res) => {
     try {
         const id = Number(req.params.id);
-        const { nombre, cuit, email, telefono, direccion } = req.body ?? {};
+        const { nombre, cuit, email, telefono, direccion, activo } = req.body ?? {};
         if (!nombre?.trim() || !cuit?.trim()) {
             return res.status(400).json({ mensaje: "El nombre y cuit son obligatorios" });
+        }
+        if (activo !== undefined && typeof activo !== "boolean") {
+            return res.status(400).json({ mensaje: "activo debe ser verdadero o falso" });
         }
 
         const resultado = await pool.query(`
             UPDATE empresas
-            SET nombre = $1, cuit = $2, email = $3, telefono = $4, direccion = $5
+            SET nombre = $1, cuit = $2, email = $3, telefono = $4, direccion = $5, activo = COALESCE($7::boolean, activo)
             WHERE id_empresa = $6
             RETURNING *`,
-            [nombre, cuit, email ?? null, telefono ?? null, direccion ?? null, id]
+            [nombre, cuit, email ?? null, telefono ?? null, direccion ?? null, id, activo ?? null]
         );
         if (resultado.rows.length === 0) {
             return res.status(404).json({ mensaje: "Empresa no encontrada" });
@@ -80,6 +83,9 @@ export const eliminarEmpresa = async (req, res) => {
         }
         res.json({ mensaje: "Empresa eliminada", empresa: resultado.rows[0] });
     } catch (error) {
+        if (error.code === "23503") {
+            return res.status(409).json({ mensaje: "No se puede eliminar, la empresa tiene personal, clientes u otros datos. Desactivala en su lugar" });
+        }
         res.status(500).json({ mensaje: "Error al eliminar la empresa" });
     }
 };

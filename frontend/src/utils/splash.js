@@ -4,7 +4,8 @@
 //   2) Al cambiar de modo claro/oscuro: lo dibuja el componente <Splash /> (components/Splash.jsx, con Ant Design).
 //      mostrarSplash() le avisa que tiene que aparecer.
 
-export const DURACION = 2900; // ms al abrir la página
+export const DURACION = 1500; // ms al abrir la página
+const CLAVE_VISTO = "noctis-splash-visto";
 export const DURACION_RAPIDA = 1900; // ms al cambiar de modo (la animación va más rápida)
 export const DURACION_REDUCIDA = 400; // ms si el usuario pidió menos animaciones
 
@@ -16,6 +17,21 @@ export const menosMovimiento = () => window.matchMedia("(prefers-reduced-motion:
 export function iniciarSplash() {
   const splash = document.getElementById("splash");
   if (!splash) return;
+
+  // Se muestra una sola vez por sesión del navegador, y nunca en el link que abre el cliente:
+  // al recargar o al abrir otra pestaña no hay que volver a esperarlo.
+  let yaVisto = false;
+  try {
+    yaVisto = sessionStorage.getItem(CLAVE_VISTO) === "1";
+    sessionStorage.setItem(CLAVE_VISTO, "1");
+  } catch {
+    // sin sessionStorage se muestra igual
+  }
+  if (yaVisto || location.pathname.startsWith("/evento/")) {
+    splash.remove();
+    return;
+  }
+
   const minimo = new Promise((resolver) => setTimeout(resolver, menosMovimiento() ? DURACION_REDUCIDA : DURACION));
   const fuentes = document.fonts ? document.fonts.ready : Promise.resolve();
   Promise.all([minimo, fuentes]).then(() => {

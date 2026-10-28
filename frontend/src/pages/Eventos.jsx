@@ -1,19 +1,21 @@
-import { DeleteOutlined, EditOutlined, LinkOutlined, PlusOutlined } from "@ant-design/icons";
+import { ArrowRightOutlined, DeleteOutlined, EditOutlined, LinkOutlined, PlusOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Card, Empty, Popconfirm, Segmented, Skeleton, Space, Table, Tooltip } from "antd";
 import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { eventosApi } from "../api/eventos.js";
 import Estado from "../components/Estado.jsx";
 import FormModal from "../components/FormModal.jsx";
 import Topbar from "../components/Topbar.jsx";
-import { useAuth } from "../context/AuthContext.jsx";
+import useCatalogos from "../hooks/useCatalogos.js";
+import usePermisos from "../hooks/usePermisos.js";
 import useRecurso from "../hooks/useRecurso.js";
-import { diasHasta, etiqueta, fechaCorta, fechaLarga, hoyISO, soloFecha } from "../utils/formato.js";
+import { diasHasta, fechaCorta, fechaLarga, hoyISO, soloFecha } from "../utils/formato.js";
 
 // Pantalla principal del panel: tablero con el próximo evento, la semana actual y la tabla de eventos.
 // No usa PaginaCrud porque tiene más cosas (filtros, calendario semanal, link público).
 
-// Estado del evento -> color de su etiqueta.
-const ESTADOS = {
+// Estado del evento -> color de su etiqueta (también lo usa la ficha del evento).
+export const ESTADOS = {
   recibida: "var(--amber)",
   en_evaluacion: "var(--cyan)",
   propuesta_enviada: "var(--violet)",
@@ -27,7 +29,7 @@ const ESTADOS = {
 
 // Colores que se reparten entre eventos (barra de la tabla, día del calendario).
 const PALETA = ["var(--pink)", "var(--cyan)", "var(--violet)", "var(--lime)", "var(--amber)"];
-const colorDe = (e) => PALETA[e.id_evento % PALETA.length];
+export const colorDe = (e) => PALETA[e.id_evento % PALETA.length];
 
 // Un evento "cerrado" ya no cuenta como próximo; un "borrador" todavía no está confirmado.
 const CERRADOS = ["realizado", "cancelado", "rechazada"];
@@ -51,9 +53,41 @@ function semanaActual() {
   });
 }
 
+// Campos del formulario del evento. El estado no se elige acá: arranca como solicitud "recibida" y avanza
+// con la propuesta, la confirmación del encargo y el cierre (ficha del evento).
+//   conCliente -> el cliente solo se elige al crear (después el back no lo cambia)
+export function camposEvento({ clientes, personal, yo, conCliente }) {
+  return [
+    { name: "tipo_evento", label: "Nombre / tipo de evento", required: true, full: true },
+    ...(conCliente
+      ? [{
+          name: "id_cliente", label: "Cliente", type: "select", required: true, full: true,
+          options: clientes.map((c) => ({ value: c.id_cliente, label: c.nombre })),
+          ayuda: clientes.length ? undefined : "Primero cargá el cliente en la sección Clientes.",
+        }]
+      : []),
+    { name: "fecha", label: "Fecha", type: "date" },
+    { name: "sede_prevista", label: "Sala / sede" },
+    { name: "cant_asistentes_estimada", label: "Asistentes estimados", type: "number", step: 1 },
+    {
+      name: "estado_sede", label: "Disponibilidad de la sede", type: "select", required: true, defecto: "pendiente",
+      options: [{ value: "pendiente", label: "Pendiente" }, { value: "confirmada", label: "Confirmada" }],
+    },
+    {
+      name: "id_organizador", label: "Organizador", type: "select", required: true, defecto: yo,
+      options: personal
+        .filter((p) => p.roles.some((r) => r.nombre === "organizador"))
+        .map((p) => ({ value: p.id_personal, label: p.nombre })),
+    },
+    { name: "necesidades_preferencias", label: "Necesidades y preferencias", type: "textarea" },
+  ];
+}
+
 export default function Eventos() {
-  const { usuario } = useAuth();
+  const permisos = usePermisos();
+  const navigate = useNavigate();
   const { message } = App.useApp();
+  const { clientes, personal, nombrePersona, recargarCatalogos } = useCatalogos(["clientes", "personal"]);
   const { items, cargando, error, recargar, guardar, eliminar } = useRecurso(eventosApi, "id_evento");
   const [filtro, setFiltro] = useState("proximos");
   const [busqueda, setBusqueda] = useState("");
@@ -62,24 +96,10 @@ export default function Eventos() {
   const hoy = hoyISO();
   const semana = useMemo(semanaActual, []);
 
-  // Campos del formulario de alta/edición (el organizador por defecto es el usuario actual).
-  const campos = useMemo(() => [
-    { name: "tipo_evento", label: "Nombre / tipo de evento", required: true, full: true },
-    { name: "id_cliente", label: "ID del cliente", type: "number", required: true, step: 1 },
-    { name: "fecha", label: "Fecha", type: "date" },
-    { name: "sede_prevista", label: "Sala / sede" },
-    { name: "cant_asistentes_estimada", label: "Capacidad estimada", type: "number", step: 1 },
-    {
-      name: "estado", label: "Estado", type: "select", required: true, defecto: "recibida",
-      options: Object.keys(ESTADOS).map((value) => ({ value, label: etiqueta(value) })),
-    },
-    {
-      name: "estado_sede", label: "Estado de la sede", type: "select", required: true, defecto: "pendiente",
-      options: [{ value: "pendiente", label: "Pendiente" }, { value: "confirmada", label: "Confirmada" }],
-    },
-    { name: "id_organizador", label: "ID del organizador", type: "number", step: 1, defecto: usuario?.id_personal },
-    { name: "necesidades_preferencias", label: "Necesidades y preferencias", type: "textarea" },
-  ], [usuario?.id_personal]);
+  const campos = useMemo(
+    () => camposEvento({ clientes, personal, yo: permisos.yo, conCliente: editando === "nuevo" }),
+    [clientes, personal, permisos.yo, editando]
+  );
 
   // Cálculos de pantalla, de arriba hacia abajo:
   //   lista     -> filas de la tabla (búsqueda + pestaña activa, ordenadas por fecha)
@@ -127,10 +147,10 @@ export default function Eventos() {
       key: "evento",
       className: "col-principal",
       render: (_, e) => (
-        <span className="bar-name" style={{ "--c": colorDe(e) }}>
+        <Link to={`/eventos/${e.id_evento}`} className="bar-name" style={{ "--c": colorDe(e) }}>
           <i />
           {e.tipo_evento}
-        </span>
+        </Link>
       ),
     },
     { title: "Fecha", key: "fecha", render: (_, e) => (e.fecha ? fechaCorta(e.fecha) : "Sin fecha") },
@@ -143,7 +163,7 @@ export default function Eventos() {
     {
       title: "Organiza",
       key: "organiza",
-      render: (_, e) => (e.id_organizador == null ? "—" : e.id_organizador === usuario?.id_personal ? "Vos" : `Personal #${e.id_organizador}`),
+      render: (_, e) => (e.id_organizador == null ? "—" : e.id_organizador === permisos.yo ? "Vos" : nombrePersona(e.id_organizador)),
     },
     { title: "Estado", key: "estado", render: (_, e) => <Estado estado={e.estado} color={ESTADOS[e.estado]} /> },
     {
@@ -156,9 +176,17 @@ export default function Eventos() {
               <Button type="text" icon={<LinkOutlined />} aria-label="Copiar enlace" onClick={() => copiarLink(e)} />
             </Tooltip>
           )}
-          <Tooltip title="Editar">
-            <Button type="text" icon={<EditOutlined />} aria-label="Editar" onClick={() => setEditando(e)} />
+          <Tooltip title="Abrir la ficha del evento">
+            <Button type="text" icon={<ArrowRightOutlined />} aria-label="Abrir" onClick={() => navigate(`/eventos/${e.id_evento}`)} />
           </Tooltip>
+          {/* Editar: solo su organizador y mientras no esté cerrado. Eliminar: solo una solicitud recién
+              cargada (error de carga); el resto se conserva y se cierra desde la ficha. */}
+          {permisos.esDuenoDe(e) && !CERRADOS.includes(e.estado) && (
+            <Tooltip title="Editar">
+              <Button type="text" icon={<EditOutlined />} aria-label="Editar" onClick={() => setEditando(e)} />
+            </Tooltip>
+          )}
+          {permisos.esDuenoDe(e) && e.estado === "recibida" && (
           <Popconfirm
             title={`¿Eliminar "${e.tipo_evento}"?`}
             okText="Eliminar"
@@ -170,6 +198,7 @@ export default function Eventos() {
               <Button type="text" danger icon={<DeleteOutlined />} aria-label="Eliminar" />
             </Tooltip>
           </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -184,9 +213,19 @@ export default function Eventos() {
           <div className="eyebrow">{fechaLarga()}</div>
           <h1>Eventos</h1>
         </div>
-        <Button type="primary" size="large" icon={<PlusOutlined />} onClick={() => setEditando("nuevo")}>
-          Nuevo evento
-        </Button>
+        {permisos.esOrganizador && (
+          <Button
+            type="primary"
+            size="large"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              recargarCatalogos();
+              setEditando("nuevo");
+            }}
+          >
+            Nuevo evento
+          </Button>
+        )}
       </div>
 
       <div className="dash">
@@ -298,7 +337,10 @@ export default function Eventos() {
           titulo={editando === "nuevo" ? "Nuevo evento" : "Editar evento"}
           campos={campos}
           item={editando === "nuevo" ? null : editando}
-          onGuardar={(valores) => guardar(editando === "nuevo" ? null : editando, valores)}
+          onGuardar={async (valores) => {
+            await guardar(editando === "nuevo" ? null : editando, valores);
+            message.success(editando === "nuevo" ? "Solicitud registrada" : "Evento actualizado");
+          }}
           onCerrar={() => setEditando(null)}
         />
       )}

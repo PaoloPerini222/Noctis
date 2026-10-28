@@ -42,7 +42,7 @@ html::after {
 :root:not([data-theme="light"]) body::before,
 :root:not([data-theme="light"]) body::after {
   top: 0;
-  width: min(34vw, 420px);
+  width: min(24vw, 300px);
   height: 100vh;
   background-size: auto 100%;
   background-position: top left;
@@ -60,24 +60,56 @@ html::after {
   transform: scaleX(-1); /* la misma franja, espejada */
 }
 
+/* La luna va arriba a la derecha, chica y tenue: si queda detrás del título o de las fichas,
+   el texto claro se pierde sobre la luna blanca. */
 :root:not([data-theme="light"])::after {
   top: 2vh;
-  right: 15vw;
-  width: min(52vw, 760px);
+  right: 2vw;
+  width: min(30vw, 400px);
   aspect-ratio: 900 / 560;
   background-size: contain;
   background-position: top right;
-  opacity: .96;
+  opacity: .55;
 }
 
 /* --- Modo claro: sol, luna y El Pensador --- */
 :root[data-theme="light"] body::before {
   top: 0;
   right: 0;
-  width: min(38vw, 520px);
+  width: min(26vw, 340px);
   aspect-ratio: 620 / 420;
   background-size: contain;
   background-position: top right;
+  opacity: .7;
+}
+
+/* Los controles que quedan sobre el sol, la luna o las hojas llevan un fondo de vidrio para leerse bien. */
+.role-pill,
+.boton-tema,
+.boton-enlace,
+.pub-cabecera .logo {
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.boton-enlace,
+.pub-cabecera .logo {
+  border-radius: 999px;
+}
+
+.pub-cabecera .logo {
+  padding: 6px 14px;
+}
+
+/* Texto de la pantalla "sin rol": va sobre una tarjeta para no perderse sobre la escultura. */
+.sin-rol .ant-result {
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-radius: 20px;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
 :root[data-theme="light"] body::after {

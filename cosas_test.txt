@@ -1,0 +1,271 @@
+COSAS ENCONTRADAS EN LA RAMA TEST
+Rama: test - commit 60629af ("feat: permisos por rol, reglas de negocio y frontend del flujo completo", carlospleita)
+Fecha de la prueba: 23/10/2026
+
+======================================================================
+CÓMO SE PROBÓ
+======================================================================
+- API: 110 chequeos automáticos contra el back de la rama test, recorriendo el flujo
+  completo con 5 cuentas: responsable, 2 organizadores, coordinador, superadmin y
+  una cuenta sin rol. Cubre cliente, servicio, proveedor, evento, propuesta y sus
+  servicios, aprobación, envío, link público, aceptación, confirmación, tareas,
+  cambios, exclusiones, pendientes, cierre realizado, cancelación con avisos y rechazo.
+- Front: Playwright (navegador real) por todas las pantallas con cada cuenta, en
+  escritorio (1366x860) y celular (390x844), modo claro y modo oscuro. Se registraron
+  errores de consola, excepciones, respuestas HTTP fallidas y desbordes horizontales,
+  y se revisaron las capturas una por una.
+- Revisión del código nuevo del back (controllers, middleware de permisos, utils).
+- Los datos de prueba (prefijo ZZ_E2E) se crearon en Supabase y se borraron al
+  terminar. La base quedó como estaba.
+- Resultado general: 101 de 110 chequeos de la API pasan. No hubo excepciones de
+  JavaScript ni errores 500. Lo que falla son inconsistencias de reglas de negocio
+  y detalles visuales.
+
+Severidad: ALTA = puede dejar datos incorrectos o dar acceso indebido.
+           MEDIA = inconsistencia visible o regla que no se cumple.
+           BAJA = detalle visual o de prolijidad.
+
+======================================================================
+1. BUGS FUNCIONALES E INCONSISTENCIAS DE DATOS (API)
+======================================================================
+
+1.1 [ALTA] Se puede cambiar el importe de una propuesta YA ACEPTADA por el cliente
+    - Reproducir: propuesta en "aceptada" -> PUT /api/propuesta/:id/detalle/:idDetalle
+      con otro importe_unitario -> responde 200.
+    - En la prueba el total aceptado era $210.000 y quedó en $60.100, con la propuesta
+      todavía "aceptada". El cliente aceptó un precio y el sistema muestra otro.
+    - Lo mismo pasa con agregar o borrar servicios (POST/DELETE detalle).
+    - Dónde: src/controllers/detalle.controller.js (crearDetalle, editarDetalle,
+      eliminarDetalle no miran el estado de la propuesta). El trigger de la base solo
+      reabre propuestas "aprobada" o "enviada".
+
+1.2 [ALTA] Se pueden agregar servicios a la propuesta de un evento ya REALIZADO
+    - POST /api/propuesta/:id/detalle sobre un evento "realizado" -> 201.
+    - Igual que 1.1: el detalle no valida el estado del evento ni de la propuesta.
+
+1.3 [MEDIA] El estado del evento no acompaña a la propuesta cuando el trigger la reabre
+    - Reproducir: propuesta "enviada" (evento "propuesta_enviada") -> editar el importe
+      de un servicio -> la propuesta vuelve sola a "pendiente_aprobacion", pero el
+      evento sigue en "propuesta_enviada".
+    - Debería quedar en "en_evaluacion", como cuando se pide la aprobación a mano.
+    - Dónde: detalle.controller.js (recalcularTotal) y propuesta.controller.js
+      (editarPropuesta solo sincroniza el evento cuando el estado cambia por pedido,
+      no cuando lo cambia el trigger).
+
+1.4 [MEDIA] Se puede agregar a la propuesta un servicio EXCLUIDO del evento
+    - Reproducir: POST /api/evento/:id/exclusiones con un servicio -> después
+      POST /api/propuesta/:id/detalle con ese mismo servicio -> 201.
+    - Dónde: crearDetalle no consulta servicio_excluido_evento.
+
+1.5 [MEDIA] Se reabren tareas de un evento ya realizado o cancelado
+    - PUT /api/tarea/:id/estado {"estado":"pendiente"} sobre una tarea de un evento
+      "realizado" -> 200.
+    - Además el estado de una tarea se puede mover en cualquier dirección
+      (terminada -> pendiente, cancelada -> en_curso).
+    - Dónde: tarea.controller.js (cambiarEstadoTarea no valida el evento ni la transición).
+
+1.6 [MEDIA] La propuesta de un evento cancelado sigue "viva"
+    - Al cancelar un evento, su propuesta queda en "borrador" y se puede pedir la
+      aprobación igual (PUT estado "pendiente_aprobacion" -> 200).
+    - Consecuencia visible: aparece en Pendientes > "Propuestas para revisar" y en
+      Propuestas > "Para revisar" de la responsable, aunque el evento está cancelado.
+    - Dónde: cierre.controller.js (crearCierre no toca la propuesta),
+      propuesta.controller.js (no mira el estado del evento) y pendientes.controller.js
+      (la consulta de propuestas no excluye eventos cerrados).
+
+1.7 [MEDIA] Un evento RECHAZADO se puede reabrir a mano
+    - PUT /api/evento/:id {"estado":"recibida"} sobre un evento "rechazada" -> 200.
+    - Cierre y Tareas tratan "rechazada" como cerrado, pero editarEvento solo bloquea
+      "realizado" y "cancelado". También se puede volver a "recibida" o "en_evaluacion"
+      desde "aceptada" o "confirmado".
+    - Dónde: evento.controller.js (editarEvento, ESTADOS_POR_CIERRE).
+
+1.8 [MEDIA] Se asignan tareas a personas sin rol
+    - POST /api/tarea con id_personal de "Usuario" (pendiente de autorizar) -> 201.
+    - Esa persona no puede entrar al sistema a verla ni a cambiarle el estado.
+    - Dónde: tarea.controller.js (validarTarea no valida a la persona).
+
+1.9 [ALTA] El rol "superadmin" existe en la base pero el back no lo contempla
+    - superadmin@gmail.com pasa el filtro "conRol" porque tiene algún rol, así que ve
+      TODO: eventos, propuestas, clientes, el equipo con los emails, etc.
+    - No puede crear ni editar casi nada, pero sí todo lo de Empresas (ver 1.10).
+    - Hay que decidir qué hace el superadmin y reflejarlo en
+      src/middleware/permisos.js. En el front, el panel tampoco tiene nada propio
+      para ese rol.
+
+1.10 [ALTA] Empresas no tiene restricción de rol
+    - Cualquier rol, incluido coordinador o superadmin, puede crear, editar y borrar
+      empresas. En la prueba, un coordinador creó una empresa (201).
+    - Es la única entidad sin soloRoles(...).
+    - Dónde: src/routes/empresas.routes.js.
+
+1.11 [BAJA] La propuesta enviada no guarda la fecha de emisión
+    - Al pasar a "enviada" no se completa fecha_emision. En la pantalla del evento
+      queda "Emisión: —" aunque la propuesta ya se mandó.
+    - Dónde: propuesta.controller.js (editarPropuesta).
+
+1.12 [BAJA] Para borrar una propuesta en borrador hay que quitar antes cada servicio
+    - DELETE de una propuesta con servicios -> 409 "tiene detalles asociados".
+    - Si solo se borran borradores, se podrían borrar sus servicios en la misma
+      operación.
+
+1.13 [BAJA] Servicios con el mismo nombre
+    - Se pueden crear dos servicios "Catering" (201). Conviene un UNIQUE o una validación.
+
+1.14 [BAJA] Detalles de prolijidad en el back
+    - obtenerTareas, obtenerTarea, obtenerPropuestas, obtenerPropuesta y
+      eliminarPropuesta no hacen console.error en el catch: si fallan no queda rastro
+      en el log.
+    - Al reemplazar el proveedor de un servicio, el motivo pisa las observaciones
+      que ya tenía.
+    - Equipo (/api/personal) muestra los emails de todo el personal a cualquier rol.
+
+======================================================================
+2. BUGS VISUALES (FRONT)
+======================================================================
+
+2.1 [MEDIA] Modo oscuro: la luna tapa el contenido del evento
+    - En /eventos/:id, la luna decorativa queda POR ENCIMA del título del evento
+      (tapa las últimas letras) y de la ficha (zona "Organizador").
+    - En la página pública /evento/:token también se superpone al título.
+    - Las enredaderas tapan el logo "NOCTIS", el botón "Modo claro" y
+      "Enlace del cliente".
+
+2.2 [MEDIA] Celular: botones de "Nuevo ..." cortados
+    - /proveedores: el botón "Nuevo proveedor" se sale de la pantalla (83px de
+      desborde horizontal).
+    - /empresas: "Nueva empresa" se sale 14px.
+    - Además, en /proveedores queda un espacio en blanco grande entre la cabecera y el
+      buscador, que no tienen las otras pantallas.
+
+2.3 [MEDIA] El splash tarda unos 3,8 segundos en CADA carga completa de la página
+    - Aparece al abrir cualquier URL, al recargar (F5) y al abrir el link del cliente.
+    - Para el cliente que abre su link, son casi 4 segundos sin ver su propuesta.
+    - Dónde: frontend/src/utils/splash.js (DURACION = 2900 ms + 900 ms de salida).
+
+2.4 [BAJA] Modo claro: el sol decorativo queda debajo de botones y textos
+    - "Enlace del cliente" (detalle del evento), el badge "ROL · ..." (arriba a la
+      derecha) y "Modo oscuro" (página pública) quedan encima del sol y se leen peor.
+
+2.5 [BAJA] Aviso de Ant Design en la consola en todos los detalles de evento
+    - "Sum of column span in a line not match column of Descriptions".
+    - Dónde: PanelCierre.jsx (Observaciones con span={2} y column xs:1/md:2) y la
+      ficha de EventoDetalle.jsx (column xs:1/sm:2/lg:3).
+
+2.6 [BAJA] Un evento realizado sigue mostrando "Hay servicios sin proveedor confirmado"
+    - El aviso "Estos compromisos siguen pendientes" aparece aunque el evento ya se
+      cerró como realizado.
+
+2.7 [BAJA] Fechas sin año
+    - En el detalle del evento y en la página pública se ve "Mié 10 Mar" para un evento
+      de 2027. Con eventos a más de un año, la fecha es ambigua.
+
+2.8 [BAJA] Cuenta sin rol: menú completo visible
+    - La cuenta sin rol ve todo el menú lateral (Pendientes, Eventos, ...) aunque
+      todas las pantallas le muestran "Tu cuenta espera autorización".
+    - El texto de esa pantalla queda encima de la escultura de fondo y pierde contraste.
+
+2.9 [BAJA] Celular: la barra inferior tiene 9 secciones y se ven 6
+    - Servicios, Equipo y Empresas quedan fuera de la pantalla. Se llega deslizando
+      la barra, pero no hay ninguna pista visual de que se puede deslizar.
+
+======================================================================
+3. LO QUE FUNCIONA BIEN (PROBADO)
+======================================================================
+- Login, registro, email repetido (409), contraseña corta (400).
+- Cuentas sin rol: 403 en toda la API y pantalla de "espera autorización".
+- Asignación de roles por la responsable, con rollback si un rol no existe. El rol
+  vale al instante, sin volver a loguear.
+- Permisos: solo el organizador del evento lo edita; otro organizador recibe 403.
+  La responsable no edita eventos. El coordinador no crea clientes ni eventos.
+- El evento nace "recibida" y la propuesta "borrador" con total 0 aunque el body
+  pida otra cosa. Una sola propuesta por evento (409).
+- Total = suma de servicios. Validaciones de cantidad, importe, fechas
+  (2027-02-30 rechazada) e ids fuera de rango.
+- Flujo de aprobación: el organizador no puede aprobar, la responsable sí. Pedir
+  la aprobación exige al menos un servicio.
+- Link público: muestra solo la propuesta enviada, sin proveedores, y no deja
+  responder una propuesta reabierta. La aceptación actualiza propuesta y evento.
+- Confirmar el encargo exige propuesta aceptada, servicios, importe y condiciones.
+- Proveedor que no ofrece el servicio: 400. Confirmar un servicio sin proveedor: 400.
+- Cierre: permisos por rol y origen, segundo cierre 409, evento realizado no se
+  edita (409), cancelación con aviso al proveedor confirmado y registro del aviso
+  por el coordinador.
+- No se borra un evento que no está "recibida" ni un cliente con eventos (409).
+- Front: ninguna excepción de JavaScript ni error HTTP inesperado en ninguna
+  pantalla, con ningún rol.
+
+======================================================================
+4. ERRORES ARREGLADOS
+======================================================================
+(Cada arreglo se verificó corriendo de nuevo la prueba E2E de la API.)
+
+- 1.1 Propuesta aceptada con precio fijo: ya no se agregan ni quitan servicios ni se
+  cambian servicio, cantidad, importe o "descartado" (409). Solo se puede reemplazar
+  el proveedor y sus observaciones. (detalle.controller.js)
+- 1.2 Evento cerrado (realizado, cancelado o rechazado) o propuesta rechazada: sus
+  servicios ya no se agregan, editan ni quitan (409), y el coordinador ya no cambia la
+  situación de sus proveedores. (detalle.controller.js)
+- 1.3 El evento acompaña a la propuesta también cuando el trigger la reabre: nueva
+  función sincronizarEventoConPropuesta en utils/reglas.js, usada al cambiar servicios
+  y al editar la propuesta. (reglas.js, detalle.controller.js, propuesta.controller.js)
+- 1.4 Un servicio excluido del evento no se puede agregar a su propuesta, ni cambiar
+  un servicio existente por uno excluido (409). (detalle.controller.js)
+- 1.9 Superadmin: solo administra las empresas. En la API recibe 403 en los datos de
+  la organizadora (eventos, clientes, equipo, etc.); en el front solo ve la sección
+  Empresas y cualquier otra ruta lo lleva ahí. (permisos.js, Layout.jsx, usePermisos.js)
+- 1.10 Empresas: todos los roles las consultan; crear, editar y borrar queda para el
+  superadmin y la responsable (403 para el resto). El front oculta los botones a quien
+  no puede. (empresas.routes.js, Empresas.jsx)
+- 1.5 Tareas: con el evento cerrado ya no cambian de estado (409), y una tarea
+  terminada o cancelada queda en ese estado. (tarea.controller.js)
+- 1.6 Cancelar un evento cierra su propuesta abierta como "rechazada", con el motivo
+  "Evento cancelado: ...". La propuesta aceptada se conserva. Con el evento cerrado
+  no se crea, edita ni aprueba la propuesta (409), y Pendientes ya no muestra para
+  revisar propuestas de eventos cerrados. (cierre.controller.js, propuesta.controller.js,
+  pendientes.controller.js)
+- 1.7 Un evento rechazado ya no se edita (409), igual que uno realizado o cancelado.
+  Los estados que se cambian a mano siguen un orden: recibida <-> en_evaluacion,
+  aceptada -> confirmado <-> preparacion. Confirmar sin propuesta aceptada sigue
+  dando el mensaje de la regla (400). (evento.controller.js)
+- 1.8 Las tareas solo se asignan a personas con un rol de la organizadora: responsable,
+  organizador o coordinador. (tarea.controller.js)
+- 1.11 Al enviar la propuesta al cliente queda registrada la fecha de emisión, salvo
+  que ya tuviera una. (propuesta.controller.js)
+- 1.12 Borrar una propuesta en borrador también borra sus servicios. Si algún servicio
+  ya tiene tareas, no se borra nada (409). (propuesta.controller.js)
+- 1.13 No se pueden crear ni renombrar dos servicios con el mismo nombre (sin
+  distinguir mayúsculas ni espacios de más): 409. (servicio.controller.js)
+- 1.14 Logs en los catch de tareas y propuestas que no los tenían. El motivo de un
+  reemplazo de proveedor se suma a las observaciones en vez de pisarlas. Los emails del
+  equipo solo los ve la responsable (para el resto llegan vacíos).
+  (tarea.controller.js, propuesta.controller.js, detalle.controller.js, personal.controller.js)
+- 2.1 Modo oscuro: la luna quedó más chica, más tenue y arriba a la derecha, así que ya
+  no tapa el título ni las fichas. Las enredaderas son más angostas. (decoracion.css)
+- 2.2 Celular: el botón "Nuevo ..." baja debajo del título cuando no entra al lado, así
+  que ya no se sale de la pantalla en Proveedores ni en Empresas. (dashboard.css)
+- 2.3 El splash de entrada dura 1,5 s, aparece una sola vez por sesión del navegador y
+  no aparece en el link que abre el cliente. (utils/splash.js)
+- 2.4 Modo claro: el sol es más chico y tenue. Los controles que quedan sobre los
+  adornos (badge de rol, "Modo oscuro/claro", "Enlace del cliente" y el logo de la
+  página pública) llevan un fondo de vidrio. (decoracion.css, EventoDetalle.jsx)
+- 2.5 Sin avisos de Ant Design en la consola: las fichas usan span "filled" en lugar
+  de un número fijo de columnas. (PanelPropuesta.jsx, PanelCierre.jsx)
+- 2.6 El aviso "Hay servicios sin proveedor confirmado" ya no aparece en eventos
+  cerrados. Con la propuesta aceptada, la pantalla ya no ofrece "Agregar servicio" ni
+  "Quitar", y el lápiz sirve para reemplazar el proveedor (igual que la regla del back).
+  (PanelPropuesta.jsx)
+- 2.7 Las fechas de otro año muestran el año ("Mié 10 Mar 2027"). (utils/formato.js)
+- 2.8 La cuenta sin rol ya no ve el menú, y el texto de "espera autorización" va sobre
+  una tarjeta. (Layout.jsx, decoracion.css)
+- 2.9 Celular: la barra inferior se desvanece en el borde derecho para que se note que
+  se puede deslizar. (dashboard.css)
+- Sesión mezclada entre pestañas (encontrado al probar): si en otra pestaña se entraba
+  con otra cuenta, esta seguía mostrando el usuario anterior pero mandaba el token
+  nuevo. Por eso la responsable veía "El superadmin solo administra las empresas".
+  Ahora todas las pestañas se ponen al día con la sesión actual. (AuthContext.jsx)
+- Empresas, ajuste de 1.10: ahora es solo del superadmin. La responsable y el resto de
+  los roles no la ven en el menú, si entran a /empresas los lleva a Eventos, y la API
+  les responde 403 en todo, incluida la consulta. (empresas.routes.js, Layout.jsx,
+  Empresas.jsx, permisos.js)
+- Se borró la cuenta usuario@gmail.com (sin rol), a pedido.

@@ -17,6 +17,11 @@ export default function Topbar({ busqueda, onBusqueda, placeholder }) {
         onChange={(e) => onBusqueda(e.target.value)}
         placeholder={placeholder}
       />
+      {usuario?.empresa && (
+        <Tag className="role-pill" color="purple" variant="outlined">
+          {usuario.empresa.toUpperCase()}
+        </Tag>
+      )}
       <Tag className="role-pill" color="cyan" variant="outlined">
         ROL · {rolDe(usuario).toUpperCase()}
       </Tag>

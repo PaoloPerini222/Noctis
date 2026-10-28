@@ -15,13 +15,14 @@ export const hoyISO = () => {
 
 const cap = (texto) => texto.charAt(0).toUpperCase() + texto.slice(1);
 
-// "Vie 24 Oct"
+// "Vie 24 Oct" (este año) o "Mié 10 Mar 2027" (otro año, para que no sea ambigua)
 export const fechaCorta = (valor) => {
   const d = aFecha(valor);
   if (!d) return "Sin fecha";
   const dia = cap(d.toLocaleDateString("es-AR", { weekday: "short" }).replace(".", ""));
   const mes = cap(d.toLocaleDateString("es-AR", { month: "short" }).replace(".", ""));
-  return `${dia} ${d.getDate()} ${mes}`;
+  const anio = d.getFullYear() !== new Date().getFullYear() ? ` ${d.getFullYear()}` : "";
+  return `${dia} ${d.getDate()} ${mes}${anio}`;
 };
 
 // "MIÉ 22 OCT 2026"

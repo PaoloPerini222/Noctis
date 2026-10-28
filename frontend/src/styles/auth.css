@@ -3,9 +3,28 @@
 /* ---------- Acceso (login / registro) ---------- */
 
 .auth {
+  position: relative;
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1fr 1fr;
+}
+
+/* Botones de volver y tema, fijos arriba a la derecha (sobre la columna del formulario). */
+.auth-acciones {
+  position: absolute;
+  top: 36px;
+  right: 48px;
+  z-index: 5;
+  display: flex;
+  gap: 12px;
+}
+
+/* Fondo propio para que se lean sobre la decoración. */
+.auth-acciones .ant-btn {
+  background: var(--modal-bg);
+  border-color: var(--line-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
 }
 
 .auth-art {
@@ -20,12 +39,49 @@
   letter-spacing: -.03em;
 }
 
+/* El formulario va sobre una tarjeta de vidrio casi opaca: así la luna, las nubes y las hojas del fondo
+   no le quitan contraste al texto ni a los campos. Usa el mismo fondo que los modales de cada tema. */
 .auth-form {
-  padding: 48px 96px;
+  align-self: center;
+  margin: 96px 48px 48px;
+  padding: 44px 48px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 22px;
+  border-radius: 24px;
+  background: var(--modal-bg);
+  border: 1px solid var(--line-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+}
+
+/* Dentro del formulario el espacio lo da cada campo (Form.Item ya trae margen y lugar para el error):
+   sin esto se suman el gap de .swap y el margen de antd y queda todo muy separado. */
+.auth-form .swap {
+  gap: 0;
+}
+
+.auth-form .swap > div:first-child {
+  margin-bottom: 20px;
+}
+
+.auth-form .ant-form-item {
+  margin-bottom: 16px;
+}
+
+/* Si un campo muestra error, un poco más de aire antes de la etiqueta siguiente. */
+.auth-form .ant-form-item-has-error {
+  margin-bottom: 22px;
+}
+
+.auth-form .ant-alert {
+  margin-bottom: 16px;
+}
+
+.auth-form .ant-btn-primary {
+  margin-top: 8px;
 }
 
 .auth-form h1 {
@@ -49,12 +105,19 @@
   }
 
   .auth-form {
-    padding: 28px 24px 40px;
+    margin: 0 16px 32px;
+    padding: 28px 22px 32px;
   }
 }
 
 /* Teléfonos: la fila de arriba (logo, volver, tema) pasa a varias líneas en vez de apretarse. */
 @media (max-width: 600px) {
+  .auth-acciones {
+    top: 20px;
+    right: 16px;
+    gap: 8px;
+  }
+
   .art-top {
     flex-wrap: wrap;
     gap: 10px;

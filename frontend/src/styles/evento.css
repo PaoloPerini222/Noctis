@@ -1,0 +1,128 @@
+/* Ficha del evento, tablero de pendientes y pantalla de cuenta sin rol. */
+
+/* ---------- Ficha del evento ---------- */
+
+.volver {
+  color: var(--muted);
+  font-size: 13px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  width: fit-content;
+}
+
+.volver:hover {
+  color: var(--text);
+}
+
+.evento-head {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.evento-head h1 {
+  margin-bottom: 10px;
+}
+
+.evento-head h1.bar-name i {
+  height: 30px;
+}
+
+.evento-acciones {
+  justify-content: flex-end;
+}
+
+.ficha-datos {
+  padding: 18px 22px;
+  border-radius: 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+
+.evento-tabs .ant-tabs-nav {
+  margin-bottom: 18px;
+}
+
+.panel-evento {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.propuesta-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.propuesta-total {
+  font: 700 26px var(--display);
+}
+
+.propuesta-ayuda {
+  margin-top: 6px;
+  max-width: 560px;
+}
+
+.fila-descartada td {
+  opacity: .55;
+}
+
+.cambio p {
+  margin: 4px 0;
+}
+
+/* ---------- Pendientes ---------- */
+
+.pendientes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.pendientes-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pendientes-lista li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.pendientes-lista li:last-child {
+  border-bottom: 0;
+}
+
+.pendientes-lista a {
+  color: var(--soft);
+}
+
+.pendientes-lista a:hover b {
+  color: var(--primary);
+}
+
+/* ---------- Cuenta sin rol ---------- */
+
+.sin-rol {
+  justify-content: center;
+  min-height: 70vh;
+}
+
+@media (max-width: 960px) {
+  .evento-acciones {
+    justify-content: flex-start;
+  }
+}

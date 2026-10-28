@@ -1,0 +1,100 @@
+REGISTRO DE AVANCES - PAOLO
+Proyecto: API y front del sistema de eventos (CRUD de empresas y DER propuesto)
+Fecha: 20/10/2026 - Rama: Paolo - PR #5
+
+======================================================================
+1. MUDANZA SQL (base de datos en Supabase)
+======================================================================
+Se adaptó la base al DER propuesto y se aplicó la migración en Supabase.
+Las tablas estaban vacías, por lo que no se perdieron datos.
+
+- Roles: tabla rol (responsable, organizador, coordinador) y personal_rol
+  (muchos a muchos). Acceso identificado con Supabase Auth
+  (personal.usuario_id); la contraseña queda hasheada en auth.users.
+- Evento: id_organizador, fecha opcional, estado_sede (pendiente/confirmada),
+  nuevos estados (recibida, en_evaluacion, propuesta_enviada, aceptada,
+  rechazada, confirmado, preparacion, realizado, cancelado) y trigger que
+  exige fecha, sede y asistentes para aceptar/confirmar.
+  Se corrigió el estado por defecto: de 'solicitado' a 'recibida'.
+- Propuesta: aprobado_por, fecha_aprobacion, motivo_rechazo, estados
+  (borrador, pendiente_aprobacion, aprobada, enviada, en_negociacion,
+  aceptada, rechazada) y trigger que devuelve a pendiente_aprobacion una
+  propuesta aprobada/enviada que se modifica.
+- Detalle de propuesta: estado_proveedor con "no_disponible", campos
+  descartado, id_proveedor_anterior y observaciones.
+- Cierre: origen_cancelacion (cliente/organizadora), motivo_cancelacion y
+  registrado_por.
+- Tabla cambio_evento (historial de cambios del evento).
+- Tarea: estados (pendiente, en_curso, terminada, cancelada), fecha_prevista
+  obligatoria, id_detalle opcional. "Vencida" se calcula en la consulta.
+- Cliente: sin DNI, teléfono obligatorio, email opcional.
+- Tabla aviso_proveedor_cancelacion (a decidir con el cliente/grupo).
+- database/schema.sql: esquema completo generado desde la base real.
+- Pendiente: la tabla servicio_excluido_evento quedó redundante (vacía).
+  Las restricciones marcadas NOT VALID pueden validarse (tablas vacías).
+
+======================================================================
+2. REESTRUCTURACION DEL BACKEND
+======================================================================
+Estructura mínima, sin lógica dentro de los archivos (solo imports/exports).
+- src/controllers y src/routes: cliente, evento, propuesta, tarea y empresas.
+- Se eliminaron personal, cierre, proveedor, servicio, services, validators,
+  middlewares, config, utils, repositories y los .gitkeep.
+- src/data/db.js: el SSL se puede desactivar con DB_SSL=false (necesario para
+  la base local en Docker); con Supabase sigue activo por defecto.
+- Los routes de cliente, evento, propuesta y tarea están vacíos y sin montar
+  en index.js.
+
+======================================================================
+3. CARPETA FRONT (React + Vite)
+======================================================================
+front/
+  package.json, vite.config.js, index.html
+  Dockerfile, nginx.conf, .dockerignore
+  src/main.jsx, src/App.jsx          (router)
+  src/api/   client.js + empresas, clientes, eventos, propuestas, tareas
+  src/pages/ Empresas, Clientes, Eventos, Propuestas, Tareas (solo títulos)
+
+======================================================================
+4. CONEXION BACK - FRONT
+======================================================================
+- src/api/client.js: crearApi("/recurso") con obtenerTodos, obtenerUno,
+  crear, editar y eliminar. Todas las llamadas salen a /api/...
+- Desarrollo: el proxy de Vite redirige /api a http://localhost:3000.
+- Docker: nginx redirige /api/ al contenedor back.
+- Probado: build del front y proxy de Vite contra el back (devolvió las
+  empresas reales). Docker no se pudo probar (Docker Desktop apagado).
+
+======================================================================
+5. DOCKER
+======================================================================
+- docker-compose.yml: servicios db (Postgres 16, volumen db_data), back y
+  front, en la red eventos_net.
+- Puertos: front http://localhost:8081, back http://localhost:3000.
+  (el 8080 lo usa monyfast_frontend, de otro proyecto).
+- rebuild.sh: baja contenedores e imágenes viejas, buildea nuevas y levanta
+  contenedores nuevos. El volumen de la base se conserva.
+- .gitattributes fuerza LF en los .sh.
+- La base local solo carga empresas.sql; el esquema completo está en
+  database/schema.sql (requiere quitar la FK a auth.users fuera de Supabase).
+
+======================================================================
+6. GIT
+======================================================================
+- Rama de trabajo: Paolo. Todos los PRs salen de ahí, con un solo commit.
+- PR #5 abierto (Paolo -> main). Los PRs #2 y #3 ya fueron mergeados.
+- Ramas remotas: main, Paolo y feature/frontend (de carre19).
+
+======================================================================
+7. PENDIENTES Y A DECIDIR
+======================================================================
+- Carre solo tiene que hacer git pull de lo que quedó en el repo remoto.
+- La rama remota feature/frontend (commits con autor carre19, 6/10/2026, sin
+  PR; otro frontend React + Vite en frontend/ más arreglos del backend de
+  empresas) se descartó y se borró del remoto. El front vigente es front/.
+  Los arreglos del backend de esa rama (404 sin doble respuesta, 409 por CUIT
+  repetido, campo activo) no se incorporaron.
+- Conectar el MCP de Notion al workspace de Brian (notion-brian) para
+  verificar y cargar esta documentación en "Registro de avances del grupo".
+- Decidir con el cliente/grupo: sede como campo o como servicio, tipo_evento
+  libre o con lista, y si se guarda el aviso a proveedores por cancelación.

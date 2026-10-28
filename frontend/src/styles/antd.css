@@ -99,6 +99,24 @@
   backdrop-filter: blur(8px);
 }
 
+/* Dentro de un campo con ícono el <input> no lleva su propio desenfoque: si no, se ve una franja de otro
+   color adentro del recuadro. */
+.ant-input-affix-wrapper > input.ant-input {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: transparent;
+}
+
+/* En formularios verticales la etiqueta va arriba del campo: que mida lo que su texto, no el alto de un
+   campo (antd le pone el alto del control y queda un hueco grande entre etiqueta y campo). */
+.ant-form-vertical .ant-form-item .ant-form-item-label > label {
+  height: auto;
+}
+
+.ant-form-vertical .ant-form-item .ant-form-item-label {
+  padding-bottom: 6px;
+}
+
 .ant-form-item .ant-form-item-label > label {
   font-weight: 500;
   color: var(--soft);

@@ -6,6 +6,9 @@ const config = {
   singular: "cliente",
   api: clientesApi,
   id: "id_cliente",
+  // Los datos del cliente los registra el organizador; el resto los consulta.
+  puedeCrear: (p) => p.esOrganizador,
+  puedeEditar: (p) => p.esOrganizador,
   buscar: (c) => `${c.nombre} ${c.email ?? ""} ${c.telefono ?? ""}`,
   columnas: [
     { titulo: "Cliente", render: (c) => c.nombre },

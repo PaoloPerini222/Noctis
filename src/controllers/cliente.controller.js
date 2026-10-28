@@ -48,7 +48,7 @@ const validarCliente = (body) => {
 
 export const obtenerClientes = async (req, res) => {
     try{
-        const clientes = await pool.query(`select * from cliente`);
+        const clientes = await pool.query(`select * from cliente where id_empresa = $1 order by id_cliente`, [req.usuario.id_empresa]);
 
         res.json(clientes.rows);
 
@@ -66,7 +66,7 @@ export const obtenerCliente = async (req, res) => {
             return res.status(400).json({mensaje: "el id del cliente no es valido"});
         }
 
-        const unCliente = await pool.query(`select * from cliente where id_cliente = $1` , [idCliente]);
+        const unCliente = await pool.query(`select * from cliente where id_cliente = $1 and id_empresa = $2` , [idCliente, req.usuario.id_empresa]);
 
         if(unCliente.rows.length === 0){
             return res.status(404).json({mensaje: "ese cliente no existe"});
@@ -89,8 +89,8 @@ export const crearCliente = async (req, res) => {
         }
 
         const nuevoCliente = await pool.query(
-            `insert into cliente (nombre, telefono, email) values ($1, $2, $3) returning *`,
-            [datos.nombre, datos.telefono, datos.email]
+            `insert into cliente (nombre, telefono, email, id_empresa) values ($1, $2, $3, $4) returning *`,
+            [datos.nombre, datos.telefono, datos.email, req.usuario.id_empresa]
         );
 
         res.status(201).json(nuevoCliente.rows[0]);
@@ -109,7 +109,7 @@ export const editarCliente = async (req, res) => {
             return res.status(400).json({mensaje: "el id del cliente no es valido"});
         }
 
-        const actual = await pool.query(`select nombre, telefono, email from cliente where id_cliente = $1`, [idCliente]);
+        const actual = await pool.query(`select nombre, telefono, email from cliente where id_cliente = $1 and id_empresa = $2`, [idCliente, req.usuario.id_empresa]);
         if(actual.rows.length === 0){
             return res.status(404).json({mensaje: "ese cliente no existe"});
         }
@@ -120,8 +120,8 @@ export const editarCliente = async (req, res) => {
         }
 
         const clienteEditado = await pool.query(
-            `update cliente set nombre = $1, telefono = $2, email = $3 where id_cliente = $4 returning *`,
-            [datos.nombre, datos.telefono, datos.email, idCliente]
+            `update cliente set nombre = $1, telefono = $2, email = $3 where id_cliente = $4 and id_empresa = $5 returning *`,
+            [datos.nombre, datos.telefono, datos.email, idCliente, req.usuario.id_empresa]
         );
 
         if(clienteEditado.rows.length === 0){
@@ -144,7 +144,7 @@ export const eliminarCliente = async (req, res) => {
             return res.status(400).json({mensaje: "el id del cliente no es valido"});
         }
 
-        const eliminar = await pool.query(`delete from cliente where id_cliente = $1 RETURNING *`, [idCliente]);
+        const eliminar = await pool.query(`delete from cliente where id_cliente = $1 and id_empresa = $2 RETURNING *`, [idCliente, req.usuario.id_empresa]);
 
         if(eliminar.rows.length === 0){
             return res.status(404).json({mensaje: "ese cliente no existe"});
