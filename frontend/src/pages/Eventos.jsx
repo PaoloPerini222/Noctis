@@ -71,7 +71,7 @@ export function camposEvento({ clientes, personal, yo, conCliente }) {
     { name: "cant_asistentes_estimada", label: "Asistentes estimados", type: "number", step: 1 },
     {
       name: "estado_sede", label: "Disponibilidad de la sede", type: "select", required: true, defecto: "pendiente",
-      options: [{ value: "pendiente", label: "Pendiente" }, { value: "confirmada", label: "Confirmada" }],
+      options: [{ value: "pendiente", label: "Pendiente de consulta" }, { value: "confirmada", label: "Confirmada" }, { value: "no_disponible", label: "No disponible" }],
     },
     {
       name: "id_organizador", label: "Organizador", type: "select", required: true, defecto: yo,

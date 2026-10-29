@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import pool from "../data/db.js";
 import { parseId, REGEX_EMAIL } from "../utils/validaciones.js";
 import { RESPONSABLE } from "../middleware/permisos.js";
+import { SERVICIOS_HABITUALES } from "../utils/servicios.js";
 
 // Una empresa nueva necesita a su dueña: la primera persona con rol de responsable, que después suma al resto del equipo.
 // Valida {nombre, email, password}; devuelve {error} o {valor}.
@@ -91,6 +92,10 @@ export const crearEmpresa = async (req, res) => {
             [nombre.trim(), cuit.trim(), email ?? null, telefono ?? null, direccion ?? null]
         );
         const idEmpresa = resultado.rows[0].id_empresa;
+        // Arranca con los servicios habituales como punto de partida (después se editan a gusto).
+        for (const { nombre: servicio, descripcion } of SERVICIOS_HABITUALES) {
+            await cliente.query(`INSERT INTO servicio (nombre, descripcion, id_empresa) VALUES ($1, $2, $3)`, [servicio, descripcion, idEmpresa]);
+        }
         if (dueno) await insertarResponsable(cliente, idEmpresa, dueno);
         await cliente.query("COMMIT");
 

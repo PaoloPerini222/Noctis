@@ -29,7 +29,7 @@ const buscarEvento = async (cliente, token, {bloquear}) => {
 const buscarPropuesta = async (cliente, idEvento, {bloquear}) => {
     const propuesta = await cliente.query(
         `select id_propuesta, fecha_emision::text as fecha_emision, total, estado,
-                fecha_respuesta::text as fecha_respuesta, condiciones_acordadas, motivo_rechazo
+                fecha_respuesta::text as fecha_respuesta, condiciones_comerciales, condiciones_acordadas, motivo_rechazo
          from propuesta
          where id_evento = $1${bloquear ? " for update" : ""}`,
         [idEvento]

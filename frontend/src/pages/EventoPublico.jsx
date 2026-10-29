@@ -152,6 +152,7 @@ export default function EventoPublico() {
                 )}
               />
 
+              {propuesta.condiciones_comerciales && <Typography.Paragraph type="secondary">{propuesta.condiciones_comerciales}</Typography.Paragraph>}
               {propuesta.condiciones_acordadas && <Typography.Paragraph type="secondary">{propuesta.condiciones_acordadas}</Typography.Paragraph>}
               {propuesta.estado === "rechazada" && propuesta.motivo_rechazo && (
                 <Typography.Paragraph type="secondary">Motivo del rechazo: {propuesta.motivo_rechazo}</Typography.Paragraph>

@@ -31,8 +31,8 @@ export default function Proveedores() {
     campos: [
       { name: "nombre", label: "Nombre o empresa", required: true, full: true },
       { name: "contacto", label: "Persona de contacto (nombre y apellido)" },
-      { name: "telefono", label: "Teléfono" },
-      { name: "email", label: "Email", type: "email" },
+      { name: "telefono", label: "Teléfono", required: true },
+      { name: "email", label: "Email (opcional)", type: "email" },
       { name: "direccion", label: "Dirección" },
       {
         name: "servicios", label: "Servicios que ofrece", type: "multiselect", full: true,

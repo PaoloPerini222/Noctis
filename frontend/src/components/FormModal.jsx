@@ -12,6 +12,8 @@ import { soloFecha } from "../utils/formato.js";
 //   desde   -> (item) => valor inicial al editar, cuando el dato del registro no tiene la forma del campo
 //   ayuda   -> texto de ayuda debajo del campo
 //   minimo  -> largo mínimo del texto (solo si el campo se completó), ej. contraseñas
+// alCambiar(cambiados, form) es opcional: se llama cuando el usuario cambia un campo, para completar otro a partir de ese
+// (ej. proponer el importe de referencia al elegir un servicio). Usa form.setFieldsValue / form.getFieldValue.
 // onGuardar(valores) debe devolver una promesa; si falla, el mensaje se muestra dentro del modal.
 
 const FORMATO_BACK = "YYYY-MM-DD"; // así espera las fechas el back
@@ -72,7 +74,7 @@ function Control({ campo, ...props }) {
   }
 }
 
-export default function FormModal({ titulo, campos, item, onGuardar, onCerrar }) {
+export default function FormModal({ titulo, campos, item, onGuardar, onCerrar, alCambiar }) {
   const [form] = Form.useForm();
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -103,7 +105,7 @@ export default function FormModal({ titulo, campos, item, onGuardar, onCerrar })
       mask={{ closable: !enviando }}
       onCancel={onCerrar}
     >
-      <Form form={form} layout="vertical" requiredMark={false} initialValues={valoresIniciales} onFinish={enviar}>
+      <Form form={form} layout="vertical" requiredMark={false} initialValues={valoresIniciales} onFinish={enviar} onValuesChange={alCambiar && ((cambiados) => alCambiar(cambiados, form))}>
         <Row gutter={16}>
           {campos.map((c) => (
             <Col key={c.name} xs={24} md={c.full || c.type === "textarea" ? 24 : 12}>
