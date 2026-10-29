@@ -2,7 +2,7 @@ import pool from "../data/db.js";
 import {parseId, textoObligatorio, textoOpcional} from "../utils/validaciones.js";
 
 const SELECT_CAMBIO = `
-    select c.*, p.nombre as registrado_por_nombre
+    select c.*, p.nombre_completo as registrado_por_nombre
     from cambio_evento c
     join personal p on p.id_personal = c.registrado_por`;
 

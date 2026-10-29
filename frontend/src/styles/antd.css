@@ -164,10 +164,23 @@
 
 /* ---------- Etiquetas y avisos ---------- */
 
-.role-pill {
+/* Etiquetas de empresa y rol (arriba a la derecha): pastillas de vidrio con los colores del tema. */
+.role-pill.ant-tag {
+  margin: 0;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .1em;
   white-space: nowrap;
-  letter-spacing: .08em;
-  padding: 4px 12px;
+}
+
+/* La empresa va resaltada con el color principal del tema (dorado en claro, rojo en oscuro). */
+.role-pill--empresa.ant-tag {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 22%, var(--bg));
 }
 
 .ant-alert {
@@ -177,4 +190,23 @@
 /* El texto de ayuda de los formularios hereda el color suave del tema. */
 .lead {
   color: var(--muted);
+}
+
+/* ---------- Tipografía griega: Cinzel en botones, menús, pestañas y encabezados de tabla ---------- */
+
+.ant-btn,
+.ant-menu-item,
+.ant-segmented-item-label,
+.ant-table-thead > tr > th,
+.ant-modal .ant-modal-title,
+.ant-card-head-title,
+.ant-tag {
+  font-family: var(--display);
+  letter-spacing: .04em;
+}
+
+.ant-btn,
+.ant-menu-item,
+.ant-segmented-item-label {
+  font-weight: 600;
 }

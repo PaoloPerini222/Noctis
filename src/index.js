@@ -16,6 +16,7 @@ import detalleRoutes from "./routes/detalle.routes.js";
 import exclusionRoutes from "./routes/exclusion.routes.js";
 import cambioRoutes from "./routes/cambio.routes.js";
 import cierreRoutes from "./routes/cierre.routes.js";
+import reaperturaRoutes from "./routes/reapertura.routes.js";
 import pendientesRoutes from "./routes/pendientes.routes.js";
 
 const app = express();
@@ -37,6 +38,7 @@ app.use("/api/proveedor", proveedorRoutes);
 app.use("/api/evento/:idEvento/exclusiones", exclusionRoutes);
 app.use("/api/evento/:idEvento/cambios", cambioRoutes);
 app.use("/api/evento/:idEvento/cierre", cierreRoutes);
+app.use("/api/evento/:idEvento/reapertura", reaperturaRoutes);
 app.use("/api/evento", eventoRoutes);
 app.use("/api/propuesta/:idPropuesta/detalle", detalleRoutes);
 app.use("/api/propuesta", propuestaRoutes);

@@ -1,20 +1,21 @@
-import { ArrowLeftOutlined, CheckOutlined, CloseCircleOutlined, EditOutlined, FlagOutlined, LinkOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, CheckOutlined, CloseCircleOutlined, EditOutlined, FlagOutlined, LinkOutlined, UndoOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Descriptions, Popconfirm, Result, Skeleton, Space, Tabs, Tag } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { cierreApi, eventosApi } from "../api/eventos.js";
+import { cierreApi, eventosApi, reaperturaApi } from "../api/eventos.js";
 import { detalleApi, propuestasApi } from "../api/propuestas.js";
 import PanelCambios from "../components/evento/PanelCambios.jsx";
 import PanelCierre from "../components/evento/PanelCierre.jsx";
 import PanelExclusiones from "../components/evento/PanelExclusiones.jsx";
 import PanelPropuesta from "../components/evento/PanelPropuesta.jsx";
-import Estado from "../components/Estado.jsx";
+import PanelRechazos from "../components/evento/PanelRechazos.jsx";
+import Estado, { COLORES_SEDE } from "../components/Estado.jsx";
 import FormModal from "../components/FormModal.jsx";
 import TablaTareas from "../components/TablaTareas.jsx";
 import useCatalogos from "../hooks/useCatalogos.js";
 import usePermisos from "../hooks/usePermisos.js";
 import { mensajeError } from "../services/api.js";
-import { diasHasta, fechaCorta } from "../utils/formato.js";
+import { contacto, diasHasta, fechaCorta } from "../utils/formato.js";
 import { camposEvento, colorDe, ESTADOS } from "./Eventos.jsx";
 
 const CERRADOS = ["realizado", "cancelado"];
@@ -28,12 +29,13 @@ export default function EventoDetalle() {
   const [params, setParams] = useSearchParams();
   const { message } = App.useApp();
   const permisos = usePermisos();
-  const { clientes, personal, nombreCliente, nombrePersona } = useCatalogos(["clientes", "personal"]);
+  const { clientes, personal, nombreCliente, nombrePersona, cliente: datosCliente, persona: datosPersona } = useCatalogos(["clientes", "personal"]);
 
   const [evento, setEvento] = useState(null);
   const [propuesta, setPropuesta] = useState(null);
   const [detalles, setDetalles] = useState([]);
   const [cierre, setCierre] = useState(null);
+  const [rechazos, setRechazos] = useState([]);
   const [error, setError] = useState("");
   const [modal, setModal] = useState(null); // null | "editar" | "cancelar"
 
@@ -43,14 +45,16 @@ export default function EventoDetalle() {
     try {
       const [ev, propuestas] = await Promise.all([eventosApi.obtenerUno(id), propuestasApi.obtenerTodos()]);
       const prop = propuestas.find((p) => p.id_evento === ev.id_evento) ?? null;
-      const [det, cie] = await Promise.all([
+      const [det, cie, rech] = await Promise.all([
         prop ? detalleApi(prop.id_propuesta).obtenerTodos() : [],
         CERRADOS.includes(ev.estado) ? cierreApi(ev.id_evento).obtener().catch(() => null) : null,
+        reaperturaApi(ev.id_evento).rechazos().catch(() => []),
       ]);
       setEvento(ev);
       setPropuesta(prop);
       setDetalles(det);
       setCierre(cie);
+      setRechazos(rech);
     } catch (e) {
       setError(mensajeError(e, "No se pudo cargar el evento"));
     }
@@ -128,6 +132,21 @@ export default function EventoDetalle() {
       </Popconfirm>
     );
   }
+  // Si el cliente retoma un evento que había rechazado, se reabre la misma solicitud (no se crea otra).
+  if (esDueno && evento.estado === "rechazada") {
+    acciones.push(
+      <Popconfirm
+        key="reabrir"
+        title="¿El cliente retomó este evento?"
+        description="Se reabre esta misma solicitud y queda guardado el rechazo anterior. La propuesta vuelve a borrador para actualizarla y pasar de nuevo por la aprobación."
+        okText="Sí, reabrir"
+        cancelText="Cancelar"
+        onConfirm={() => ejecutar(() => reaperturaApi(evento.id_evento).reabrir(), "Solicitud reabierta: la propuesta volvió a borrador")}
+      >
+        <Button type="primary" icon={<UndoOutlined />}>Reabrir solicitud</Button>
+      </Popconfirm>
+    );
+  }
   // Cancela su organizador (a pedido del cliente) o la responsable (también si es por la organizadora).
   if ((esDueno || permisos.esResponsable) && !cerrado && evento.estado !== "rechazada") {
     acciones.push(<Button key="cancelar" danger icon={<CloseCircleOutlined />} onClick={() => setModal("cancelar")}>Cancelar evento</Button>);
@@ -171,6 +190,7 @@ export default function EventoDetalle() {
     { key: "tareas", label: "Tareas", children: <TablaTareas evento={evento} servicios={detalles} /> },
     { key: "cambios", label: "Cambios", children: <PanelCambios evento={evento} /> },
     { key: "exclusiones", label: "Servicios descartados", children: <PanelExclusiones evento={evento} /> },
+    ...(rechazos.length ? [{ key: "rechazos", label: `Rechazos anteriores (${rechazos.length})`, children: <PanelRechazos rechazos={rechazos} /> }] : []),
     ...(cierre ? [{ key: "cierre", label: "Cierre", children: <PanelCierre evento={evento} cierre={cierre} onCambio={cargar} /> }] : []),
   ];
   const tab = pestanas.some((p) => p.key === params.get("tab")) ? params.get("tab") : "propuesta";
@@ -207,11 +227,27 @@ export default function EventoDetalle() {
         column={{ xs: 1, sm: 2, lg: 3 }}
         className="ficha-datos ficha-evento"
         items={[
-          { key: "cliente", label: "Cliente", children: nombreCliente(evento.id_cliente) },
-          { key: "organizador", label: "Organizador", children: evento.id_organizador === permisos.yo ? "Vos" : nombrePersona(evento.id_organizador) },
+          {
+            key: "cliente", label: "Cliente",
+            children: (
+              <div className="dato-contacto">
+                <span>{nombreCliente(evento.id_cliente)}</span>
+                <span className="muted">{contacto(datosCliente(evento.id_cliente)?.telefono, datosCliente(evento.id_cliente)?.email)}</span>
+              </div>
+            ),
+          },
+          {
+            key: "organizador", label: "Organizador",
+            children: (
+              <div className="dato-contacto">
+                <span>{evento.id_organizador === permisos.yo ? "Vos" : nombrePersona(evento.id_organizador)}</span>
+                <span className="muted">{contacto(datosPersona(evento.id_organizador)?.telefono, datosPersona(evento.id_organizador)?.email_contacto)}</span>
+              </div>
+            ),
+          },
           { key: "asistentes", label: "Asistentes estimados", children: evento.cant_asistentes_estimada != null ? Number(evento.cant_asistentes_estimada).toLocaleString("es-AR") : <span className="muted">Pendiente de aclaración</span> },
           { key: "sede", label: "Sede", children: evento.sede_prevista ?? <span className="muted">Pendiente de aclaración</span> },
-          { key: "estado_sede", label: "Disponibilidad de la sede", children: <Estado estado={evento.estado_sede} color={evento.estado_sede === "confirmada" ? "var(--lime)" : "var(--amber)"} /> },
+          { key: "estado_sede", label: "Disponibilidad de la sede", children: <Estado estado={evento.estado_sede === "pendiente" ? "pendiente de consulta" : evento.estado_sede} color={COLORES_SEDE[evento.estado_sede]} /> },
           { key: "fecha", label: "Fecha", children: evento.fecha ? fechaCorta(evento.fecha) : <span className="muted">Pendiente de aclaración</span> },
           { key: "necesidades", label: "Necesidades y preferencias", span: "filled", children: evento.necesidades_preferencias ?? "—" },
         ]}
@@ -227,7 +263,7 @@ export default function EventoDetalle() {
           titulo="Cancelar el evento"
           campos={[
             { name: "origen_cancelacion", label: "¿Quién lo cancela?", type: "select", required: true, full: true, options: origenes },
-            { name: "motivo_cancelacion", label: "Motivo", type: "textarea", required: true },
+            { name: "motivo_cancelacion", label: "Motivo", type: "textarea", ayuda: "Anotalo si se conoce; si no, dejalo vacío (no se inventa)." },
             { name: "observaciones", label: "Observaciones", type: "textarea", ayuda: "Ej.: cómo se le comunicó al cliente. Las penalidades y devoluciones quedan fuera del sistema." },
           ]}
           item={null}

@@ -4,7 +4,7 @@
 // Si cambiás un color en base.css, cambialo también acá (son los mismos valores).
 import { theme } from "antd";
 
-const FUENTE = '"Space Grotesk", system-ui, sans-serif';
+const FUENTE = '"Philosopher", Georgia, serif'; // texto corrido; los títulos y botones usan Cinzel (ver antd.css)
 
 // Valores comunes a los dos temas.
 const base = {
@@ -19,32 +19,35 @@ const oscuro = {
   algorithm: theme.darkAlgorithm,
   token: {
     ...base,
-    colorPrimary: "#8dbd5a", // verde hoja
-    colorInfo: "#4fae9c",
-    colorSuccess: "#8dbd5a",
-    colorWarning: "#d8a24a",
-    colorError: "#d9705f",
-    colorBgBase: "#0a1510",
-    colorTextBase: "#e9f0e2",
-    colorBgContainer: "rgba(220, 245, 220, 0.07)", // cristal verdoso
-    colorBgElevated: "#14281d", // menús desplegables y ventanas
-    colorBorder: "rgba(220, 245, 220, 0.24)",
-    colorBorderSecondary: "rgba(220, 245, 220, 0.14)",
-    colorTextPlaceholder: "rgba(233, 240, 226, 0.45)",
+    colorPrimary: "#d6303f", // rojo Ares
+    colorInfo: "#7ba2b4",
+    colorSuccess: "#8fa86a",
+    colorWarning: "#d4a24a",
+    colorError: "#ff6b7a",
+    colorBgBase: "#0d0506",
+    colorTextBase: "#f6ebe8",
+    colorBgContainer: "rgba(20, 5, 8, 0.62)", // cristal casi negro con tinte rojo
+    colorBgElevated: "#1d0a0d", // menús desplegables y ventanas
+    colorBorder: "rgba(224, 72, 90, 0.50)",
+    colorBorderSecondary: "rgba(224, 72, 90, 0.30)",
+    colorTextPlaceholder: "rgba(255, 244, 241, 0.6)",
+    colorTextSecondary: "rgba(255, 244, 241, 0.88)",
+    colorTextTertiary: "rgba(255, 244, 241, 0.72)",
+    colorTextDescription: "rgba(255, 244, 241, 0.78)",
   },
   components: {
-    Button: { primaryColor: "#0b1a10", fontWeight: 700 },
+    Button: { primaryColor: "#fff3f1", fontWeight: 700 },
     Table: {
       headerBg: "transparent",
-      headerColor: "#93a58f",
-      rowHoverBg: "rgba(220, 245, 220, 0.06)",
-      borderColor: "rgba(220, 245, 220, 0.12)",
+      headerColor: "#e0c8c4",
+      rowHoverBg: "rgba(214, 48, 63, 0.12)",
+      borderColor: "rgba(224, 72, 90, 0.22)",
     },
-    Modal: { contentBg: "rgba(14, 30, 22, 0.88)", headerBg: "transparent" },
-    Segmented: { trackBg: "rgba(220, 245, 220, 0.08)", itemSelectedBg: "#8dbd5a", itemSelectedColor: "#0b1a10" },
-    Menu: { itemBg: "transparent", itemSelectedBg: "#8dbd5a", itemSelectedColor: "#0b1a10", itemHoverBg: "rgba(220, 245, 220, 0.1)" },
+    Modal: { contentBg: "rgba(18, 5, 8, 0.92)", headerBg: "transparent" },
+    Segmented: { trackBg: "rgba(214, 48, 63, 0.12)", itemSelectedBg: "#d6303f", itemSelectedColor: "#fff3f1" },
+    Menu: { itemBg: "transparent", itemSelectedBg: "#d6303f", itemSelectedColor: "#fff3f1", itemHoverBg: "rgba(214, 48, 63, 0.16)" },
     Collapse: { headerBg: "transparent", contentBg: "transparent" },
-    Card: { colorBgContainer: "rgba(220, 245, 220, 0.07)" },
+    Card: { colorBgContainer: "rgba(20, 5, 8, 0.62)" },
   },
 };
 
@@ -63,13 +66,16 @@ const claro = {
     colorBgElevated: "#fbf8ee",
     colorBorder: "rgba(60, 48, 20, 0.26)",
     colorBorderSecondary: "rgba(60, 48, 20, 0.14)",
-    colorTextPlaceholder: "rgba(42, 38, 27, 0.4)",
+    colorTextPlaceholder: "rgba(42, 38, 27, 0.58)",
+    colorTextSecondary: "rgba(42, 38, 27, 0.88)",
+    colorTextTertiary: "rgba(42, 38, 27, 0.72)",
+    colorTextDescription: "rgba(42, 38, 27, 0.78)",
   },
   components: {
     Button: { primaryColor: "#2a261b", fontWeight: 700 },
     Table: {
       headerBg: "transparent",
-      headerColor: "#736c58",
+      headerColor: "#5a533f",
       rowHoverBg: "rgba(227, 179, 36, 0.12)",
       borderColor: "rgba(60, 48, 20, 0.12)",
     },

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 520">
+  <defs>
+    <linearGradient id="oro" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e0485a" stop-opacity=".30"/>
+      <stop offset="1" stop-color="#8f1220" stop-opacity=".12"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#oro)" stroke="#d1303f" stroke-width="2.5" stroke-linejoin="round">
+    <polygon points="30,60 260,4 490,60 490,80 30,80"/>
+    <polygon points="70,64 260,18 450,64" fill="none" stroke-opacity=".6"/>
+    <rect x="30" y="80" width="460" height="14"/>
+    <rect x="30" y="94" width="460" height="24"/>
+    <rect x="56" y="118" width="82" height="10" rx="2"/><circle cx="60" cy="136" r="9"/><circle cx="134" cy="136" r="9"/><circle cx="60" cy="136" r="3.5"/><circle cx="134" cy="136" r="3.5"/><rect x="62" y="128" width="70" height="8"/><rect x="66" y="146" width="62" height="270"/><line x1="76.3" y1="150" x2="76.3" y2="412"/><line x1="86.7" y1="150" x2="86.7" y2="412"/><line x1="97.0" y1="150" x2="97.0" y2="412"/><line x1="107.3" y1="150" x2="107.3" y2="412"/><line x1="117.7" y1="150" x2="117.7" y2="412"/><rect x="60" y="416" width="74" height="10" rx="2"/><rect x="54" y="426" width="86" height="12" rx="2"/><rect x="159" y="118" width="82" height="10" rx="2"/><circle cx="163" cy="136" r="9"/><circle cx="237" cy="136" r="9"/><circle cx="163" cy="136" r="3.5"/><circle cx="237" cy="136" r="3.5"/><rect x="165" y="128" width="70" height="8"/><rect x="169" y="146" width="62" height="270"/><line x1="179.3" y1="150" x2="179.3" y2="412"/><line x1="189.7" y1="150" x2="189.7" y2="412"/><line x1="200.0" y1="150" x2="200.0" y2="412"/><line x1="210.3" y1="150" x2="210.3" y2="412"/><line x1="220.7" y1="150" x2="220.7" y2="412"/><rect x="163" y="416" width="74" height="10" rx="2"/><rect x="157" y="426" width="86" height="12" rx="2"/><rect x="262" y="118" width="82" height="10" rx="2"/><circle cx="266" cy="136" r="9"/><circle cx="340" cy="136" r="9"/><circle cx="266" cy="136" r="3.5"/><circle cx="340" cy="136" r="3.5"/><rect x="268" y="128" width="70" height="8"/><rect x="272" y="146" width="62" height="270"/><line x1="282.3" y1="150" x2="282.3" y2="412"/><line x1="292.7" y1="150" x2="292.7" y2="412"/><line x1="303.0" y1="150" x2="303.0" y2="412"/><line x1="313.3" y1="150" x2="313.3" y2="412"/><line x1="323.7" y1="150" x2="323.7" y2="412"/><rect x="266" y="416" width="74" height="10" rx="2"/><rect x="260" y="426" width="86" height="12" rx="2"/><rect x="365" y="118" width="82" height="10" rx="2"/><circle cx="369" cy="136" r="9"/><circle cx="443" cy="136" r="9"/><circle cx="369" cy="136" r="3.5"/><circle cx="443" cy="136" r="3.5"/><rect x="371" y="128" width="70" height="8"/><rect x="375" y="146" width="62" height="270"/><line x1="385.3" y1="150" x2="385.3" y2="412"/><line x1="395.7" y1="150" x2="395.7" y2="412"/><line x1="406.0" y1="150" x2="406.0" y2="412"/><line x1="416.3" y1="150" x2="416.3" y2="412"/><line x1="426.7" y1="150" x2="426.7" y2="412"/><rect x="369" y="416" width="74" height="10" rx="2"/><rect x="363" y="426" width="86" height="12" rx="2"/>
+    <rect x="20" y="438" width="480" height="14"/>
+    <rect x="8" y="452" width="504" height="16"/>
+    <rect x="0" y="468" width="520" height="18"/>
+  </g>
+  <g fill="none" stroke="#d1303f" stroke-width="2" stroke-opacity=".55">
+    <line x1="46" y1="100" x2="46" y2="112"/><line x1="68" y1="100" x2="68" y2="112"/><line x1="90" y1="100" x2="90" y2="112"/><line x1="112" y1="100" x2="112" y2="112"/><line x1="134" y1="100" x2="134" y2="112"/><line x1="156" y1="100" x2="156" y2="112"/><line x1="178" y1="100" x2="178" y2="112"/><line x1="200" y1="100" x2="200" y2="112"/><line x1="222" y1="100" x2="222" y2="112"/><line x1="244" y1="100" x2="244" y2="112"/><line x1="266" y1="100" x2="266" y2="112"/><line x1="288" y1="100" x2="288" y2="112"/><line x1="310" y1="100" x2="310" y2="112"/><line x1="332" y1="100" x2="332" y2="112"/><line x1="354" y1="100" x2="354" y2="112"/><line x1="376" y1="100" x2="376" y2="112"/><line x1="398" y1="100" x2="398" y2="112"/><line x1="420" y1="100" x2="420" y2="112"/><line x1="442" y1="100" x2="442" y2="112"/><line x1="464" y1="100" x2="464" y2="112"/><line x1="486" y1="100" x2="486" y2="112"/>
+  </g>
+</svg>

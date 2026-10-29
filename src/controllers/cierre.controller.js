@@ -1,5 +1,5 @@
 import pool from "../data/db.js";
-import {parseId, textoObligatorio, textoOpcional} from "../utils/validaciones.js";
+import {parseId, textoOpcional} from "../utils/validaciones.js";
 import {COORDINADOR, ORGANIZADOR, RESPONSABLE} from "../middleware/permisos.js";
 
 const RESULTADOS = ["realizado", "cancelado"];
@@ -83,7 +83,8 @@ export const crearCierre = async (req, res) => {
                 return res.status(400).json({mensaje: `el origen de la cancelacion debe ser uno de: ${ORIGENES.join(", ")}`});
             }
             origen = origen_cancelacion;
-            motivo = textoObligatorio(req.body?.motivo_cancelacion, "el motivo de la cancelacion", 500);
+            // El motivo se anota cuando se conoce: no se inventa.
+            motivo = textoOpcional(req.body?.motivo_cancelacion, "el motivo de la cancelacion", 500);
         }
         const error = observaciones.error ?? motivo.error;
         if(error){
@@ -108,7 +109,7 @@ export const crearCierre = async (req, res) => {
         const roles = req.usuario.roles;
         const esDueno = roles.includes(ORGANIZADOR) && evento.rows[0].id_organizador === req.usuario.id_personal;
         const esResponsable = roles.includes(RESPONSABLE);
-        const permitido = resultado === "realizado" ? esDueno : origen === "cliente" ? esDueno || esResponsable : esResponsable;
+        const permitido = resultado === "realizado" ? esDueno || esResponsable : origen === "cliente" ? esDueno || esResponsable : esResponsable;
         if(!permitido){
             await cliente.query("rollback");
             return res.status(403).json({mensaje: resultado === "cancelado" && origen === "organizadora"
@@ -144,7 +145,7 @@ export const crearCierre = async (req, res) => {
             await cliente.query(
                 `update propuesta
                  set estado = 'rechazada', fecha_respuesta = coalesce(fecha_respuesta, current_date),
-                     motivo_rechazo = coalesce(motivo_rechazo, left('Evento cancelado: ' || $2, 500))
+                     motivo_rechazo = coalesce(motivo_rechazo, left('Evento cancelado' || coalesce(': ' || $2::text, ''), 500))
                  where id_evento = $1 and estado not in ('aceptada', 'rechazada')`,
                 [idEvento, motivo.valor]
             );

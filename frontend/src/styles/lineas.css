@@ -1,0 +1,66 @@
+/* Modo oscuro (Ares): líneas, marcos y tipografía de estilo griego.
+   Todo va bajo :root:not([data-theme="light"]), así el modo claro no cambia.
+   Se importa al final para pisar los tamaños y bordes de los archivos anteriores. */
+
+/* ---------- Títulos: mayúsculas con letras espaciadas, como inscripciones en piedra ---------- */
+:root:not([data-theme="light"]) .page-head h1,
+:root:not([data-theme="light"]) .lineup-row b,
+:root:not([data-theme="light"]) .step h3,
+:root:not([data-theme="light"]) .auth-form h1,
+:root:not([data-theme="light"]) .pub h1,
+:root:not([data-theme="light"]) .ant-modal .ant-modal-title {
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+/* Línea roja bajo el título de cada página. */
+:root:not([data-theme="light"]) .page-head h1::after {
+  content: "";
+  display: block;
+  width: 84px;
+  height: 3px;
+  margin-top: 14px;
+  background: linear-gradient(90deg, var(--primary), transparent);
+}
+
+:root:not([data-theme="light"]) .eyebrow {
+  color: var(--pink);
+}
+
+/* ---------- Marcos: doble línea fina, como los bordes de un friso ---------- */
+:root:not([data-theme="light"]) .ant-card,
+:root:not([data-theme="light"]) .table-card,
+:root:not([data-theme="light"]) .ant-modal .ant-modal-content,
+:root:not([data-theme="light"]) .me {
+  border-color: var(--line-strong);
+  outline: 1px solid rgba(224, 72, 90, .22);
+  outline-offset: -7px;
+}
+
+:root:not([data-theme="light"]) .side {
+  border-right: 2px solid var(--line-strong);
+}
+
+:root:not([data-theme="light"]) .land-sub {
+  border-top-color: var(--primary);
+}
+
+:root:not([data-theme="light"]) .lineup-row,
+:root:not([data-theme="light"]) .faq .ant-collapse-item {
+  border-color: var(--line-strong);
+}
+
+/* La cabecera de la tabla lleva una línea roja más marcada. */
+:root:not([data-theme="light"]) .table-card .ant-table-thead > tr > th {
+  border-bottom: 1px solid var(--line-strong);
+}
+
+/* ---------- Detalles ---------- */
+:root:not([data-theme="light"]) .logo i {
+  box-shadow: 0 0 14px rgba(232, 71, 90, .6);
+}
+
+:root:not([data-theme="light"]) ::selection {
+  background: var(--primary);
+  color: var(--on-primary);
+}

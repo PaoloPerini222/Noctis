@@ -36,7 +36,7 @@
 
 .auth-art h2 {
   font: 700 clamp(40px, 5vw, 64px)/1.02 var(--display);
-  letter-spacing: -.03em;
+  letter-spacing: .02em;
 }
 
 /* El formulario va sobre una tarjeta de vidrio casi opaca: así la luna, las nubes y las hojas del fondo

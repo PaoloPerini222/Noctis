@@ -32,6 +32,8 @@ api.interceptors.response.use(
 
 // Mensaje legible para mostrar al usuario a partir de un error de axios.
 export function mensajeError(error, porDefecto = "Ocurrió un error") {
+  // Un error propio de la app (por ejemplo una validación del formulario) ya trae su mensaje.
+  if (!error.isAxiosError && error.message) return error.message;
   const datos = error.response?.data;
   if (datos?.mensaje || datos?.Mensaje) return datos.mensaje || datos.Mensaje;
   if (error.code === "ECONNABORTED") return "El servidor tardó demasiado en responder";

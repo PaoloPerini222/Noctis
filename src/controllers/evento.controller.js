@@ -1,6 +1,7 @@
 import pool from "../data/db.js";
 import {ESTADOS_EVENTO_CERRADOS, validarConfirmacion} from "../utils/reglas.js";
 import {esDeLaEmpresa} from "../utils/empresa.js";
+import {cambiosDelEvento, registrarCambio} from "../utils/cambios.js";
 
 const ID_MAXIMO = 2147483647;
 const REGEX_FECHA = /^\d{4}-\d{2}-\d{2}$/;
@@ -15,8 +16,9 @@ const ESTADOS = [
     "realizado",
     "cancelado",
 ];
-const ESTADOS_SEDE = ["pendiente", "confirmada"];
-const ESTADOS_QUE_EXIGEN_DATOS = ["aceptada", "confirmado", "preparacion", "realizado"];
+const ESTADOS_SEDE = ["pendiente", "confirmada", "no_disponible"];
+// El cliente puede aceptar con la fecha o la sede todavia pendientes; el encargo no se confirma hasta definirlas.
+const ESTADOS_QUE_EXIGEN_DATOS = ["confirmado", "preparacion", "realizado"];
 
 // Estados que no se eligen a mano: los define la propuesta o el cierre del evento.
 const ESTADOS_POR_PROPUESTA = ["propuesta_enviada", "aceptada", "rechazada"];
@@ -131,7 +133,7 @@ const validarEvento = (body, {requiereCliente}) => {
     };
 
     if(ESTADOS_QUE_EXIGEN_DATOS.includes(datos.estado) && (!datos.fecha || !datos.sede_prevista || !datos.cant_asistentes_estimada)){
-        return {error: "para aceptar o confirmar el evento se requiere fecha, sede y cantidad estimada de asistentes"};
+        return {error: "para confirmar el encargo se requiere fecha, sede y cantidad estimada de asistentes"};
     }
 
     return {datos};
@@ -256,6 +258,9 @@ export const editarEvento = async (req, res) => {
                 if(errorConfirmacion){
                     return res.status(400).json({mensaje: errorConfirmacion});
                 }
+                if(datos.estado_sede === "no_disponible"){
+                    return res.status(400).json({mensaje: "la sede figura como no disponible: resolvelo antes de confirmar el encargo"});
+                }
             }
             const permitidos = CAMBIOS_MANUALES[estadoActual] ?? [];
             if(!permitidos.includes(datos.estado)){
@@ -263,18 +268,40 @@ export const editarEvento = async (req, res) => {
             }
         }
 
-        const eventoEditado = await pool.query(
-            `update evento set tipo_evento = $1, fecha = $2, sede_prevista = $3, cant_asistentes_estimada = $4,
-             necesidades_preferencias = $5, estado = $6, id_organizador = $7, estado_sede = $8
-             where id_evento = $9 and id_empresa = $10 returning *`,
-            [datos.tipo_evento, datos.fecha, datos.sede_prevista, datos.cant_asistentes_estimada, datos.necesidades_preferencias, datos.estado, datos.id_organizador, datos.estado_sede, idEvento, req.usuario.id_empresa]
-        );
+        // Con el encargo confirmado, un cambio de fecha o de sede es un cambio relevante: queda anotado para que
+        // alguien revise proveedores, sede y tareas (el sistema no los actualiza solo).
+        const esEncargo = estadoActual === "confirmado" || estadoActual === "preparacion";
+        const cambios = esEncargo && req.usuario.id_personal ? cambiosDelEvento(actual.rows[0], datos) : [];
 
-        if(eventoEditado.rows.length === 0){
-            return res.status(404).json({mensaje: "ese evento no existe"});
+        const conexion = await pool.connect();
+        try{
+            await conexion.query("begin");
+
+            const eventoEditado = await conexion.query(
+                `update evento set tipo_evento = $1, fecha = $2, sede_prevista = $3, cant_asistentes_estimada = $4,
+                 necesidades_preferencias = $5, estado = $6, id_organizador = $7, estado_sede = $8
+                 where id_evento = $9 and id_empresa = $10 returning *`,
+                [datos.tipo_evento, datos.fecha, datos.sede_prevista, datos.cant_asistentes_estimada, datos.necesidades_preferencias, datos.estado, datos.id_organizador, datos.estado_sede, idEvento, req.usuario.id_empresa]
+            );
+
+            if(eventoEditado.rows.length === 0){
+                await conexion.query("rollback");
+                return res.status(404).json({mensaje: "ese evento no existe"});
+            }
+
+            for(const cambio of cambios){
+                await registrarCambio(conexion, {idEvento, tipo: cambio.tipo, descripcion: cambio.descripcion, registradoPor: req.usuario.id_personal});
+            }
+
+            await conexion.query("commit");
+            res.json(eventoEditado.rows[0]);
+
+        } catch(error){
+            await conexion.query("rollback");
+            throw error;
+        } finally{
+            conexion.release();
         }
-
-        res.json(eventoEditado.rows[0]);
 
     } catch(error){
         console.error(error);

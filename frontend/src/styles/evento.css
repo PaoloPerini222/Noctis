@@ -114,6 +114,35 @@
   color: var(--primary);
 }
 
+/* Próximos eventos: una tarjeta ancha con el detalle de cada evento (cliente, sede, servicios y tareas por resolver). */
+.pendientes-ancho {
+  grid-column: 1 / -1;
+}
+
+.proximo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.proximo-estados {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.proximo-detalle {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--soft);
+}
+
+.proximo-detalle .vencida {
+  color: var(--red);
+}
+
 /* ---------- Cuenta sin rol ---------- */
 
 .sin-rol {

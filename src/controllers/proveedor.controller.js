@@ -19,10 +19,11 @@ const buscarProveedor = async (db, idEmpresa, idProveedor) => {
 const validarProveedor = (body) => {
     const nombre = textoObligatorio(body?.nombre, "el nombre", 100);
     const contacto = textoOpcional(body?.contacto, "el contacto", 100);
-    const telefono = textoOpcional(body?.telefono, "el telefono", 30);
+    const telefono = textoObligatorio(body?.telefono, "el telefono", 30);
     const email = textoOpcional(body?.email, "el email", 100);
+    const direccion = textoOpcional(body?.direccion, "la direccion", 200);
 
-    const error = nombre.error ?? contacto.error ?? telefono.error ?? email.error;
+    const error = nombre.error ?? contacto.error ?? telefono.error ?? email.error ?? direccion.error;
     if(error){
         return {error};
     }
@@ -30,7 +31,7 @@ const validarProveedor = (body) => {
         return {error: "el email no es valido"};
     }
 
-    return {datos: {nombre: nombre.valor, contacto: contacto.valor, telefono: telefono.valor, email: email.valor}};
+    return {datos: {nombre: nombre.valor, contacto: contacto.valor, telefono: telefono.valor, email: email.valor, direccion: direccion.valor}};
 };
 
 export const obtenerProveedores = async (req, res) => {
@@ -84,8 +85,8 @@ export const crearProveedor = async (req, res) => {
         }
 
         const creado = await pool.query(
-            `insert into proveedor (nombre, contacto, telefono, email, id_empresa) values ($1, $2, $3, $4, $5) returning id_proveedor`,
-            [datos.nombre, datos.contacto, datos.telefono, datos.email, req.usuario.id_empresa]
+            `insert into proveedor (nombre, contacto, telefono, email, direccion, id_empresa) values ($1, $2, $3, $4, $5, $6) returning id_proveedor`,
+            [datos.nombre, datos.contacto, datos.telefono, datos.email, datos.direccion, req.usuario.id_empresa]
         );
 
         res.status(201).json(await buscarProveedor(pool, req.usuario.id_empresa, creado.rows[0].id_proveedor));
@@ -104,7 +105,7 @@ export const editarProveedor = async (req, res) => {
             return res.status(400).json({mensaje: "el id del proveedor no es valido"});
         }
 
-        const actual = await pool.query(`select nombre, contacto, telefono, email from proveedor where id_proveedor = $1 and id_empresa = $2`, [idProveedor, req.usuario.id_empresa]);
+        const actual = await pool.query(`select nombre, contacto, telefono, email, direccion from proveedor where id_proveedor = $1 and id_empresa = $2`, [idProveedor, req.usuario.id_empresa]);
         if(actual.rows.length === 0){
             return res.status(404).json({mensaje: "ese proveedor no existe"});
         }
@@ -115,8 +116,8 @@ export const editarProveedor = async (req, res) => {
         }
 
         await pool.query(
-            `update proveedor set nombre = $1, contacto = $2, telefono = $3, email = $4 where id_proveedor = $5`,
-            [datos.nombre, datos.contacto, datos.telefono, datos.email, idProveedor]
+            `update proveedor set nombre = $1, contacto = $2, telefono = $3, email = $4, direccion = $5 where id_proveedor = $6`,
+            [datos.nombre, datos.contacto, datos.telefono, datos.email, datos.direccion, idProveedor]
         );
 
         res.json(await buscarProveedor(pool, req.usuario.id_empresa, idProveedor));

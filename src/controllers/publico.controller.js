@@ -15,7 +15,7 @@ const sinCache = (res) => {
 const buscarEvento = async (cliente, token, {bloquear}) => {
     const evento = await cliente.query(
         `select e.id_evento, e.tipo_evento, e.fecha::text as fecha, e.sede_prevista, e.cant_asistentes_estimada,
-                e.necesidades_preferencias, e.estado, c.nombre as cliente_nombre, p.nombre as organizador_nombre
+                e.necesidades_preferencias, e.estado, c.nombre_completo as cliente_nombre, p.nombre_completo as organizador_nombre
          from evento e
          left join cliente c on c.id_cliente = e.id_cliente
          left join personal p on p.id_personal = e.id_organizador
@@ -29,7 +29,7 @@ const buscarEvento = async (cliente, token, {bloquear}) => {
 const buscarPropuesta = async (cliente, idEvento, {bloquear}) => {
     const propuesta = await cliente.query(
         `select id_propuesta, fecha_emision::text as fecha_emision, total, estado,
-                fecha_respuesta::text as fecha_respuesta, condiciones_acordadas, motivo_rechazo
+                fecha_respuesta::text as fecha_respuesta, condiciones_comerciales, condiciones_acordadas, motivo_rechazo
          from propuesta
          where id_evento = $1${bloquear ? " for update" : ""}`,
         [idEvento]

@@ -41,6 +41,12 @@ export const diasHasta = (valor) => {
   return Math.round((d - hoy) / 86400000);
 };
 
+// Nombre completo de una persona o cliente: lo calcula el back (nombre + apellido); si falta, se arma acá.
+export const nombreCompleto = (p) => p?.nombre_completo || [p?.nombre, p?.apellido].filter(Boolean).join(" ") || "";
+
+// Línea de contacto: teléfono y email separados por "·" (lo que haya cargado).
+export const contacto = (...datos) => datos.filter(Boolean).join(" · ");
+
 export const iniciales = (nombre = "") =>
   nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("") || "?";
 

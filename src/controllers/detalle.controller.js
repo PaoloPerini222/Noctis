@@ -2,6 +2,7 @@ import pool from "../data/db.js";
 import {parseId, textoOpcional} from "../utils/validaciones.js";
 import {ESTADOS_EVENTO_CERRADOS, sincronizarEventoConPropuesta} from "../utils/reglas.js";
 import {esDeLaEmpresa} from "../utils/empresa.js";
+import {registrarCambio} from "../utils/cambios.js";
 
 const ESTADOS_PROVEEDOR = ["pendiente", "confirmado", "no_disponible"];
 const IMPORTE_MAXIMO = 99999999.99;
@@ -74,21 +75,22 @@ const validarDetalle = (body) => {
     }};
 };
 
-// El total de la propuesta es la suma de los servicios no descartados. Si la propuesta estaba
-// aprobada o enviada, el trigger la devuelve a pendiente_aprobacion al cambiar el total.
-// Si la propuesta estaba en negociacion y cambian los importes, vuelve a revision de la responsable (RN-05).
-const recalcularTotal = (db, idPropuesta) =>
+// El total de la propuesta es la suma de los servicios no descartados. Si cambian los importes (RN-05) y la
+// propuesta estaba aprobada, enviada o en negociacion, vuelve a la revision de la responsable. Se revisa aunque el
+// total quede igual (por ejemplo, un importe sube y otro baja); un cambio que no toca importes (el proveedor)
+// no la reabre.
+const recalcularTotal = (db, idPropuesta, cambiaronImportes = false) =>
     db.query(
         `update propuesta p
          set total = n.total,
-             estado = case when p.estado = 'en_negociacion' and p.total <> n.total then 'pendiente_aprobacion' else p.estado end,
-             aprobado_por = case when p.estado = 'en_negociacion' and p.total <> n.total then null else p.aprobado_por end,
-             fecha_aprobacion = case when p.estado = 'en_negociacion' and p.total <> n.total then null else p.fecha_aprobacion end
+             estado = case when p.estado in ('aprobada', 'enviada', 'en_negociacion') and ($2::boolean or p.total <> n.total) then 'pendiente_aprobacion' else p.estado end,
+             aprobado_por = case when p.estado in ('aprobada', 'enviada', 'en_negociacion') and ($2::boolean or p.total <> n.total) then null else p.aprobado_por end,
+             fecha_aprobacion = case when p.estado in ('aprobada', 'enviada', 'en_negociacion') and ($2::boolean or p.total <> n.total) then null else p.fecha_aprobacion end
          from (select coalesce(sum(cantidad * importe_unitario), 0) as total
                from detalle_propuesta
                where id_propuesta = $1 and not descartado) n
          where p.id_propuesta = $1`,
-        [idPropuesta]
+        [idPropuesta, cambiaronImportes]
     );
 
 // Bloquea la propuesta y dice si sus servicios se pueden tocar:
@@ -262,7 +264,7 @@ export const crearDetalle = async (req, res) => {
             [idPropuesta, datos.id_servicio, datos.id_proveedor, datos.cantidad, datos.importe_unitario,
              "pendiente", datos.descartado, null, datos.observaciones]
         );
-        await recalcularTotal(cliente, idPropuesta);
+        await recalcularTotal(cliente, idPropuesta, true);
         await sincronizarEventoConPropuesta(cliente, idPropuesta);
 
         await cliente.query("commit");
@@ -340,6 +342,21 @@ export const editarDetalle = async (req, res) => {
                 await cliente.query("rollback");
                 return res.status(400).json({mensaje: "para reemplazar un proveedor hay que dejar una observacion con el cambio y el motivo"});
             }
+            // Reemplazar a un proveedor ya confirmado es perder su confirmacion: queda anotado como cambio relevante.
+            if(actual.rows[0].id_proveedor !== null && actual.rows[0].estado_proveedor === "confirmado" && req.usuario.id_personal){
+                const nombres = await cliente.query(
+                    `select s.nombre as servicio, pr.nombre as proveedor
+                     from servicio s, proveedor pr where s.id_servicio = $1 and pr.id_proveedor = $2`,
+                    [actual.rows[0].id_servicio, actual.rows[0].id_proveedor]
+                );
+                const {servicio, proveedor} = nombres.rows[0] ?? {};
+                await registrarCambio(cliente, {
+                    idEvento: propuesta.id_evento,
+                    tipo: "Proveedor",
+                    descripcion: `${proveedor ?? "El proveedor"} dejó de estar confirmado para ${servicio ?? "el servicio"}: se lo reemplazó y el servicio vuelve a pendiente.`,
+                    registradoPor: req.usuario.id_personal,
+                });
+            }
             datos.estado_proveedor = "pendiente";
             datos.id_proveedor_anterior = actual.rows[0].id_proveedor ?? actual.rows[0].id_proveedor_anterior;
             // El motivo del reemplazo se suma a las observaciones que ya habia, no las pisa.
@@ -365,7 +382,7 @@ export const editarDetalle = async (req, res) => {
             [datos.id_servicio, datos.id_proveedor, datos.cantidad, datos.importe_unitario, datos.estado_proveedor,
              datos.descartado, datos.id_proveedor_anterior, datos.observaciones, idDetalle]
         );
-        await recalcularTotal(cliente, idPropuesta);
+        await recalcularTotal(cliente, idPropuesta, cambiaPrecio);
         await sincronizarEventoConPropuesta(cliente, idPropuesta);
 
         await cliente.query("commit");
@@ -411,7 +428,7 @@ export const eliminarDetalle = async (req, res) => {
             await cliente.query("rollback");
             return res.status(404).json({mensaje: "ese detalle no existe en la propuesta"});
         }
-        await recalcularTotal(cliente, idPropuesta);
+        await recalcularTotal(cliente, idPropuesta, true);
         await sincronizarEventoConPropuesta(cliente, idPropuesta);
 
         await cliente.query("commit");
@@ -446,10 +463,13 @@ export const cambiarEstadoProveedor = async (req, res) => {
         }
 
         const actual = await pool.query(
-            `select d.id_proveedor, d.descartado, e.estado as estado_evento
+            `select d.id_proveedor, d.descartado, d.estado_proveedor, e.id_evento, e.estado as estado_evento,
+                    s.nombre as servicio, pr.nombre as proveedor
              from detalle_propuesta d
              join propuesta p on p.id_propuesta = d.id_propuesta
              join evento e on e.id_evento = p.id_evento
+             join servicio s on s.id_servicio = d.id_servicio
+             left join proveedor pr on pr.id_proveedor = d.id_proveedor
              where d.id_propuesta = $1 and d.id_detalle = $2 and e.id_empresa = $3`,
             [idPropuesta, idDetalle, req.usuario.id_empresa]
         );
@@ -466,7 +486,29 @@ export const cambiarEstadoProveedor = async (req, res) => {
             return res.status(400).json({mensaje: "no se puede confirmar un servicio descartado"});
         }
 
-        await pool.query(`update detalle_propuesta set estado_proveedor = $1 where id_detalle = $2`, [estado_proveedor, idDetalle]);
+        // Si un proveedor ya confirmado avisa que no puede, se actualiza su situacion y se deja constancia:
+        // perder la confirmacion es un cambio relevante del encargo, que alguien tiene que revisar.
+        const previo = actual.rows[0];
+        const pierdeConfirmacion = previo.estado_proveedor === "confirmado" && estado_proveedor !== "confirmado";
+        const conexion = await pool.connect();
+        try{
+            await conexion.query("begin");
+            await conexion.query(`update detalle_propuesta set estado_proveedor = $1 where id_detalle = $2`, [estado_proveedor, idDetalle]);
+            if(pierdeConfirmacion && req.usuario.id_personal){
+                await registrarCambio(conexion, {
+                    idEvento: previo.id_evento,
+                    tipo: "Proveedor",
+                    descripcion: `${previo.proveedor ?? "El proveedor"} dejó de estar confirmado para ${previo.servicio} (ahora ${estado_proveedor.replace("_", " ")}): el servicio queda pendiente.`,
+                    registradoPor: req.usuario.id_personal,
+                });
+            }
+            await conexion.query("commit");
+        } catch(error){
+            await conexion.query("rollback");
+            throw error;
+        } finally{
+            conexion.release();
+        }
 
         const detalle = await pool.query(`${SELECT_DETALLE} where d.id_detalle = $1`, [idDetalle]);
         res.json(detalle.rows[0]);
