@@ -1,0 +1,53 @@
+# Máquina de datos y balanceo: Postgres + nginx (balanceador hacia los 3 nodos).
+#
+#   docker compose -f docker-compose.lb-db.yml up -d
+#
+# Requiere en el .env: DB_USER, DB_PASSWORD, DB_NAME, NODO1..NODO3 (ip:puerto del
+# front de cada nodo) y opcionalmente LB_PORT.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: eventos-db
+    environment:
+      POSTGRES_USER: ${DB_USER:?Definí DB_USER en el .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Definí DB_PASSWORD en el .env}
+      POSTGRES_DB: ${DB_NAME:?Definí DB_NAME en el .env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # Postgres ejecuta los .sql en orden alfabético solo si el volumen está vacío
+      - ./database:/docker-entrypoint-initdb.d:ro
+    # Publicado para que los 3 nodos lleguen desde la red local. Limitá el acceso
+    # con el firewall de la máquina a las IPs de los nodos.
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - lb_net
+    restart: unless-stopped
+
+  lb:
+    image: nginx:alpine
+    container_name: eventos-lb
+    environment:
+      NODO1: ${NODO1:?Definí NODO1 (ip:puerto del front del nodo 1)}
+      NODO2: ${NODO2:?Definí NODO2 (ip:puerto del front del nodo 2)}
+      NODO3: ${NODO3:?Definí NODO3 (ip:puerto del front del nodo 3)}
+    volumes:
+      # nginx reemplaza ${NODO1..3} al arrancar (solo las variables definidas arriba)
+      - ./lb/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+    ports:
+      - "${LB_PORT:-80}:80"
+    networks:
+      - lb_net
+    restart: unless-stopped
+
+networks:
+  lb_net:
+    driver: bridge
+
+volumes:
+  db_data:
