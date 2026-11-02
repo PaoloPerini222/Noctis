@@ -8,6 +8,7 @@ export const eventosApi = crearApi("/evento");
 //   exclusiones -> servicios que el cliente descartó (/evento/:id/exclusiones)
 //   cambios     -> cambios relevantes y la revisión de sus compromisos (/evento/:id/cambios)
 //   cierre      -> realizado o cancelado, con los avisos a proveedores (/evento/:id/cierre)
+//   reapertura  -> rechazos anteriores de la solicitud y reabrirla si el cliente la retoma (/evento/:id/reapertura)
 export const exclusionesApi = (idEvento) => crearApi(`/evento/${idEvento}/exclusiones`);
 
 export const cambiosApi = (idEvento) => crearApi(`/evento/${idEvento}/cambios`);
@@ -16,4 +17,9 @@ export const cierreApi = (idEvento) => ({
   obtener: () => api.get(`/evento/${idEvento}/cierre`).then((res) => res.data),
   cerrar: (datos) => api.post(`/evento/${idEvento}/cierre`, datos).then((res) => res.data),
   registrarAviso: (idAviso, datos) => api.put(`/evento/${idEvento}/cierre/avisos/${idAviso}`, datos).then((res) => res.data),
+});
+
+export const reaperturaApi = (idEvento) => ({
+  rechazos: () => api.get(`/evento/${idEvento}/reapertura`).then((res) => res.data),
+  reabrir: () => api.post(`/evento/${idEvento}/reapertura`).then((res) => res.data),
 });

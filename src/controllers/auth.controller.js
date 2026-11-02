@@ -8,7 +8,7 @@ const normalizarEmail = (email) => String(email).trim().toLowerCase();
 // Devuelve el usuario con su personal asociado y la lista de nombres de rol.
 const buscarUsuario = async (campo, valor) => {
   const resultado = await pool.query(`
-    SELECT u.id_usuario, u.email, u.password_hash, p.id_personal, p.nombre, p.id_empresa, em.nombre AS empresa, em.activo AS empresa_activa,
+    SELECT u.id_usuario, u.email, u.password_hash, p.id_personal, p.nombre_completo AS nombre, p.id_empresa, em.nombre AS empresa, em.activo AS empresa_activa,
            COALESCE(array_agg(r.nombre) FILTER (WHERE r.nombre IS NOT NULL), '{}') AS roles
     FROM usuario u
     LEFT JOIN personal p ON p.usuario_id = u.id_usuario
@@ -42,7 +42,7 @@ export const empresasParaRegistro = async (req, res) => {
 };
 
 export const registrar = async (req, res) => {
-  const { nombre, email, password } = req.body ?? {};
+  const { nombre, apellido, email, password } = req.body ?? {};
 
   if (!nombre?.trim() || !email?.trim() || !password) {
     return res.status(400).json({ mensaje: "Faltan datos" });
@@ -71,15 +71,15 @@ export const registrar = async (req, res) => {
       RETURNING id_usuario, email`, [normalizarEmail(email), passwordHash]);
     const { id_usuario } = usuario.rows[0];
     const personal = await cliente.query(`
-      INSERT INTO personal (nombre, usuario_id, id_empresa)
-      VALUES ($1, $2, $3)
-      RETURNING id_personal`, [nombre.trim(), id_usuario, idEmpresa]);
+      INSERT INTO personal (nombre, apellido, usuario_id, id_empresa)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id_personal`, [nombre.trim(), typeof apellido === "string" && apellido.trim() ? apellido.trim().slice(0, 100) : null, id_usuario, idEmpresa]);
     await cliente.query("COMMIT");
 
     res.status(201).json({
       id: id_usuario,
       id_personal: personal.rows[0].id_personal,
-      nombre: nombre.trim(),
+      nombre: [nombre.trim(), typeof apellido === "string" ? apellido.trim() : ""].filter(Boolean).join(" "),
       email: usuario.rows[0].email,
       id_empresa: idEmpresa
     });

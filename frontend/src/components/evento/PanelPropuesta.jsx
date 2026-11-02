@@ -24,8 +24,8 @@ const AYUDA = {
   aprobada: "Aprobada: ya se puede enviar al cliente (también puede verla con el enlace del evento).",
   enviada: "Esperando la respuesta del cliente. Si pide cambios, pasala a negociación.",
   en_negociacion: "Si cambian los importes, vuelve a la revisión de la responsable antes de reenviarla.",
-  aceptada: "El cliente aceptó. Registrá las condiciones acordadas para poder confirmar el encargo.",
-  rechazada: "El cliente la rechazó. La solicitud se conserva con su motivo.",
+  aceptada: "El cliente aceptó. Registrá las condiciones acordadas para poder confirmar el encargo (que también necesita fecha, sede y asistentes).",
+  rechazada: "El cliente la rechazó. La solicitud se conserva con su motivo, si lo explicó. Si retoma el evento, el organizador puede reabrir la solicitud.",
 };
 
 // Propuesta del evento y sus servicios.
@@ -196,7 +196,7 @@ export default function PanelPropuesta({ evento, propuesta, detalles, onCambio }
   const camposDetalle = [
     {
       name: "id_servicio", label: "Servicio", type: "select", required: true, full: true,
-      options: servicios.map((s) => ({ value: s.id_servicio, label: s.nombre })),
+      options: servicios.map((s) => ({ value: s.id_servicio, label: s.importe_referencia != null ? `${s.nombre} — ref. ${moneda(s.importe_referencia)}` : s.nombre })),
       ayuda: servicios.length ? undefined : "Primero cargá servicios en la sección Servicios.",
     },
     {
@@ -207,7 +207,10 @@ export default function PanelPropuesta({ evento, propuesta, detalles, onCambio }
       })),
     },
     { name: "cantidad", label: "Cantidad", type: "number", required: true, defecto: 1 },
-    { name: "importe_unitario", label: "Importe unitario", type: "number", required: true, step: 0.01 },
+    {
+      name: "importe_unitario", label: "Importe unitario", type: "number", required: true, step: 0.01,
+      ayuda: "Si el servicio tiene importe de referencia se propone al elegirlo; ajustalo según los asistentes, el evento y el proveedor.",
+    },
     {
       name: "descartado", label: "¿El cliente lo descartó?", type: "select", required: true, defecto: false,
       options: [{ value: false, label: "No, está incluido" }, { value: true, label: "Sí, lo descartó" }],
@@ -220,8 +223,19 @@ export default function PanelPropuesta({ evento, propuesta, detalles, onCambio }
 
   const camposDatos = [
     { name: "fecha_emision", label: "Fecha de emisión", type: "date" },
-    { name: "condiciones_acordadas", label: "Condiciones acordadas", type: "textarea", ayuda: "Necesarias para confirmar el encargo." },
+    {
+      name: "condiciones_comerciales", label: "Condiciones comerciales", type: "textarea",
+      ayuda: "Parte de la oferta que ve el cliente, ej.: el importe depende de la cantidad de asistentes. Si cambian, la responsable la revisa de nuevo.",
+    },
+    { name: "condiciones_acordadas", label: "Condiciones particulares acordadas", type: "textarea", ayuda: "Lo convenido con el cliente. Necesarias para confirmar el encargo." },
   ];
+
+  // Al elegir un servicio nuevo se propone su importe de referencia (si tiene y todavía no se escribió uno).
+  const proponerImporte = (cambiados, form) => {
+    if (cambiados.id_servicio === undefined || editando !== "nuevo" || form.getFieldValue("importe_unitario") != null) return;
+    const referencia = servicios.find((s) => s.id_servicio === cambiados.id_servicio)?.importe_referencia;
+    if (referencia != null) form.setFieldsValue({ importe_unitario: Number(referencia) });
+  };
 
   const guardarDetalle = async (valores) => {
     try {
@@ -279,8 +293,9 @@ export default function PanelPropuesta({ evento, propuesta, detalles, onCambio }
           {propuesta.aprobado_por ? `${nombrePersona(propuesta.aprobado_por)} · ${fechaCorta(propuesta.fecha_aprobacion)}` : "—"}
         </Descriptions.Item>
         <Descriptions.Item label="Respuesta del cliente">{propuesta.fecha_respuesta ? fechaCorta(propuesta.fecha_respuesta) : "—"}</Descriptions.Item>
-        <Descriptions.Item label="Condiciones acordadas" span="filled">{propuesta.condiciones_acordadas ?? <span className="muted">Pendiente de aclaración</span>}</Descriptions.Item>
-        {propuesta.motivo_rechazo && <Descriptions.Item label="Motivo de rechazo" span="filled">{propuesta.motivo_rechazo}</Descriptions.Item>}
+        <Descriptions.Item label="Condiciones comerciales" span="filled">{propuesta.condiciones_comerciales ?? <span className="muted">Sin condiciones comerciales</span>}</Descriptions.Item>
+        <Descriptions.Item label="Condiciones particulares acordadas" span="filled">{propuesta.condiciones_acordadas ?? <span className="muted">Pendiente de aclaración</span>}</Descriptions.Item>
+        {estado === "rechazada" && <Descriptions.Item label="Motivo de rechazo" span="filled">{propuesta.motivo_rechazo ?? <span className="muted">El cliente no explicó el motivo</span>}</Descriptions.Item>}
       </Descriptions>
 
       {estado === "aceptada" && !cerrado && detalles.some((d) => !d.descartado && d.estado_proveedor !== "confirmado") && (
@@ -322,7 +337,7 @@ export default function PanelPropuesta({ evento, propuesta, detalles, onCambio }
       {editando === "rechazo" && (
         <FormModal
           titulo="Registrar el rechazo del cliente"
-          campos={[{ name: "motivo_rechazo", label: "Motivo del rechazo", type: "textarea", required: true, ayuda: "Pedir cambios no es rechazar: para eso pasala a negociación." }]}
+          campos={[{ name: "motivo_rechazo", label: "Motivo del rechazo (si el cliente lo explicó)", type: "textarea", ayuda: "Si no lo explicó, dejalo vacío: no se inventa. Pedir cambios no es rechazar: para eso pasala a negociación." }]}
           item={null}
           onGuardar={registrarRechazo}
           onCerrar={() => setEditando(null)}
@@ -333,6 +348,7 @@ export default function PanelPropuesta({ evento, propuesta, detalles, onCambio }
           titulo={editando === "nuevo" ? "Agregar servicio" : "Editar servicio"}
           campos={camposDetalle}
           item={editando === "nuevo" ? null : { ...editando, importe_unitario: Number(editando.importe_unitario) }}
+          alCambiar={proponerImporte}
           onGuardar={guardarDetalle}
           onCerrar={() => setEditando(null)}
         />

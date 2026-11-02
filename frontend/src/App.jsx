@@ -1,24 +1,26 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout.jsx";
 import RutaProtegida from "./components/RutaProtegida.jsx";
 import Acceso from "./pages/Acceso.jsx";
-import Clientes from "./pages/Clientes.jsx";
-import Empresas from "./pages/Empresas.jsx";
-import Equipo from "./pages/Equipo.jsx";
-import EventoDetalle from "./pages/EventoDetalle.jsx";
-import EventoPublico from "./pages/EventoPublico.jsx";
-import Eventos from "./pages/Eventos.jsx";
 import Landing from "./pages/Landing.jsx";
-import Pendientes from "./pages/Pendientes.jsx";
-import Propuestas from "./pages/Propuestas.jsx";
-import Proveedores from "./pages/Proveedores.jsx";
-import Servicios from "./pages/Servicios.jsx";
-import Tareas from "./pages/Tareas.jsx";
 import Splash from "./components/Splash.jsx";
+
+// Las pantallas se cargan recién cuando se visitan (la landing y el acceso, que son lo primero que se ve, van directas).
+const Clientes = lazy(() => import("./pages/Clientes.jsx"));
+const Empresas = lazy(() => import("./pages/Empresas.jsx"));
+const Equipo = lazy(() => import("./pages/Equipo.jsx"));
+const EventoDetalle = lazy(() => import("./pages/EventoDetalle.jsx"));
+const EventoPublico = lazy(() => import("./pages/EventoPublico.jsx"));
+const Eventos = lazy(() => import("./pages/Eventos.jsx"));
+const Propuestas = lazy(() => import("./pages/Propuestas.jsx"));
+const Proveedores = lazy(() => import("./pages/Proveedores.jsx"));
+const Servicios = lazy(() => import("./pages/Servicios.jsx"));
+const Tareas = lazy(() => import("./pages/Tareas.jsx"));
 
 // Mapa de rutas de toda la app.
 //   Públicas:   /  /login  /registro  /evento/:token (enlace que abre el cliente)
-//   Privadas:   /pendientes /eventos /eventos/:id (ficha) /propuestas /tareas /clientes
+//   Privadas:   /eventos /eventos/:id (ficha) /propuestas (con la vista Pendientes) /tareas /clientes
 //               /proveedores /servicios /equipo /empresas
 //               Van dentro de RutaProtegida (exige sesión) y de Layout (sidebar + barra móvil).
 //   Cualquier otra URL vuelve a la landing.
@@ -27,6 +29,7 @@ export default function App() {
   return (
     <>
       <Splash />
+      <Suspense fallback={null}>
       <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Acceso modo="login" />} />
@@ -40,7 +43,8 @@ export default function App() {
           </RutaProtegida>
         }
       >
-        <Route path="/pendientes" element={<Pendientes />} />
+        {/* Los pendientes ahora son una vista de Propuestas: el enlace viejo sigue andando. */}
+        <Route path="/pendientes" element={<Navigate to="/propuestas?vista=pendientes" replace />} />
         <Route path="/eventos" element={<Eventos />} />
         <Route path="/eventos/:id" element={<EventoDetalle />} />
         <Route path="/clientes" element={<Clientes />} />
@@ -54,6 +58,7 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </>
   );
 }

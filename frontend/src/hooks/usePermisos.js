@@ -3,7 +3,8 @@ import { useAuth } from "../context/AuthContext.jsx";
 // Qué puede hacer el usuario actual. Solo sirve para mostrar u ocultar botones:
 // el back vuelve a verificar todo y es quien decide.
 //   Organizador  -> clientes, eventos propios (propuesta, servicios, tareas, exclusiones), proveedores y servicios
-//   Responsable  -> aprueba propuestas, gestiona el personal y sus roles, decide cancelaciones de la organizadora
+//   Responsable  -> la dueña de la empresa: aprueba propuestas, gestiona el personal y sus roles, decide cancelaciones
+//                   de la organizadora y además puede todo lo del organizador (en cualquier evento) y del coordinador
 //   Coordinador  -> situación de cada proveedor, estado de cualquier tarea y avisos de cancelación
 //   Todos        -> consultan todo y registran cambios relevantes
 export default function usePermisos() {
@@ -11,11 +12,14 @@ export default function usePermisos() {
   const roles = usuario?.roles ?? [];
   const yo = usuario?.id_personal;
 
-  const esOrganizador = roles.includes("organizador");
   const esResponsable = roles.includes("responsable");
-  const esCoordinador = roles.includes("coordinador");
+  // La responsable (dueña de la empresa) puede hacer todo lo del organizador y del coordinador (el back lo aplica igual).
+  const esOrganizador = roles.includes("organizador") || esResponsable;
+  const esCoordinador = roles.includes("coordinador") || esResponsable;
   const esSuperadmin = roles.includes("superadmin");
-  const esDuenoDe = (evento) => esOrganizador && evento?.id_organizador != null && evento.id_organizador === yo;
+  // "Dueño" de un evento: su organizador. La responsable puede trabajar sobre todos los eventos de la empresa.
+  const esDuenoDe = (evento) =>
+    esResponsable || (roles.includes("organizador") && evento?.id_organizador != null && evento.id_organizador === yo);
 
   return {
     yo,

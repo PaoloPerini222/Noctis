@@ -19,7 +19,7 @@ export const obtenerPendientes = async (req, res) => {
         const [tareas, servicios, propuestas, proximos] = await Promise.all([
             pool.query(
                 `select t.*, (t.fecha_prevista < current_date) as vencida,
-                        e.tipo_evento, e.fecha::text as fecha_evento, p.nombre as responsable
+                        e.tipo_evento, e.fecha::text as fecha_evento, p.nombre_completo as responsable
                  from tarea t
                  join evento e on e.id_evento = t.id_evento
                  join personal p on p.id_personal = t.id_personal
@@ -53,22 +53,30 @@ export const obtenerPendientes = async (req, res) => {
             ),
             pool.query(
                 `select e.id_evento, e.tipo_evento, e.fecha::text as fecha, e.sede_prevista, e.estado, e.estado_sede,
-                        e.cant_asistentes_estimada
+                        e.cant_asistentes_estimada, c.nombre_completo as cliente, c.telefono as cliente_telefono, c.email as cliente_email
                  from evento e
-                 where e.fecha >= current_date and e.estado in ${ESTADOS_ENCARGO}
+                 join cliente c on c.id_cliente = e.id_cliente
+                 where (e.fecha is null or e.fecha >= current_date) and e.estado in ${ESTADOS_ENCARGO}
                    and e.id_empresa = $2 and ($1::int is null or e.id_evento = $1)
-                 order by e.fecha, e.id_evento
-                 limit 20`,
+                 order by e.fecha nulls last, e.id_evento`,
                 [idEvento, req.usuario.id_empresa]
             ),
         ]);
+
+        // Cada evento proximo lleva lo que le falta resolver: sus servicios sin confirmar y sus tareas pendientes o vencidas.
+        // La lista sale ordenada por la fecha del evento, del mas proximo al mas lejano.
+        const eventosProximos = proximos.rows.map((e) => ({
+            ...e,
+            servicios_sin_confirmar: servicios.rows.filter((s) => s.id_evento === e.id_evento),
+            tareas: tareas.rows.filter((t) => t.id_evento === e.id_evento),
+        }));
 
         res.json({
             tareas_vencidas: tareas.rows.filter((t) => t.vencida),
             tareas_pendientes: tareas.rows.filter((t) => !t.vencida),
             servicios_sin_confirmar: servicios.rows,
             propuestas_para_revisar: propuestas.rows,
-            eventos_proximos: proximos.rows,
+            eventos_proximos: eventosProximos,
         });
 
     } catch(error){

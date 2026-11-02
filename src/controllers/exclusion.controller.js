@@ -3,7 +3,7 @@ import {parseId, textoOpcional} from "../utils/validaciones.js";
 import {esDeLaEmpresa} from "../utils/empresa.js";
 
 const SELECT_EXCLUSION = `
-    select x.*, s.nombre as servicio, p.nombre as registrado_por_nombre
+    select x.*, s.nombre as servicio, p.nombre_completo as registrado_por_nombre
     from servicio_excluido_evento x
     join servicio s on s.id_servicio = x.id_servicio
     join personal p on p.id_personal = x.registrado_por`;

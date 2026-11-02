@@ -1,5 +1,4 @@
 import {
-  AlertOutlined,
   AppstoreOutlined,
   BankOutlined,
   CalendarOutlined,
@@ -21,7 +20,6 @@ import SinRol from "./SinRol.jsx";
 
 // Secciones del panel: alimentan el menú lateral (escritorio) y la barra inferior (móvil).
 export const SECCIONES = [
-  { to: "/pendientes", label: "Pendientes", icono: <AlertOutlined /> },
   { to: "/eventos", label: "Eventos", icono: <CalendarOutlined /> },
   { to: "/propuestas", label: "Propuestas", icono: <FileTextOutlined /> },
   { to: "/tareas", label: "Tareas", icono: <CheckSquareOutlined /> },

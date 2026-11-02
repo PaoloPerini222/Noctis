@@ -53,7 +53,7 @@
 
 .land-title {
   font: 700 clamp(96px, 23.5vw, 300px)/.82 var(--display);
-  letter-spacing: -.05em;
+  letter-spacing: .02em;
   margin-top: 64px;
 }
 
@@ -115,7 +115,7 @@
 
 .lineup-row b {
   font: 700 clamp(36px, 5vw, 64px) var(--display);
-  letter-spacing: -.03em;
+  letter-spacing: .02em;
 }
 
 .lineup-row span {
@@ -132,16 +132,19 @@
   gap: 40px;
 }
 
+/* Cada paso va centrado: número, título y texto. */
 .step {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: 12px;
 }
 
+/* El número ya no es solo contorno: va relleno con el color del paso para que se lea bien. */
 .step .n {
   font: 700 120px/1 var(--display);
-  color: transparent;
-  -webkit-text-stroke: 2px var(--c);
+  color: var(--c);
 }
 
 .step h3 {
@@ -151,7 +154,8 @@
 .step p {
   font-size: 15px;
   line-height: 1.6;
-  color: var(--muted);
+  max-width: 320px;
+  color: var(--soft);
 }
 
 .faq {
@@ -170,7 +174,7 @@
 
 .faq h2 {
   font: 700 56px/1 var(--display);
-  letter-spacing: -.03em;
+  letter-spacing: .02em;
 }
 
 .land-foot {

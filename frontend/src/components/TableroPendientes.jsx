@@ -3,14 +3,15 @@ import { Alert, Badge, Button, Card, Empty } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { pendientesApi } from "../api/equipo.js";
-import Estado from "../components/Estado.jsx";
+import Estado, { COLORES_SEDE } from "./Estado.jsx";
 import usePermisos from "../hooks/usePermisos.js";
 import { mensajeError } from "../services/api.js";
-import { diasHasta, etiqueta, fechaCorta, fechaLarga, moneda } from "../utils/formato.js";
+import { contacto, diasHasta, etiqueta, fechaCorta, moneda } from "../utils/formato.js";
+import { ESTADOS } from "../pages/Eventos.jsx";
 
 // Tablero para controlar y priorizar: lo pendiente y lo vencido de todos los eventos en curso.
-// Cada bloque lleva a la ficha del evento, donde se resuelve.
-export default function Pendientes() {
+// Cada bloque lleva a la ficha del evento, donde se resuelve. Vive dentro de la pantalla de Propuestas (vista "Pendientes").
+export default function TableroPendientes() {
   const permisos = usePermisos();
   const [datos, setDatos] = useState(null);
   const [error, setError] = useState("");
@@ -91,14 +92,52 @@ export default function Pendientes() {
     {
       id: "proximos",
       titulo: "Próximos eventos",
+      ancho: true,
       items: datos?.eventos_proximos ?? [],
+      // Por evento, del más próximo al más lejano: qué es, de quién, dónde, en qué estado está y qué falta resolver.
       fila: (e) => {
-        const dias = diasHasta(e.fecha);
+        const dias = e.fecha ? diasHasta(e.fecha) : null;
+        const vencidas = e.tareas.filter((t) => t.vencida).length;
         return (
-          <Link to={enlace(e.id_evento)}>
-            <b>{e.tipo_evento}</b> · {fechaCorta(e.fecha)}
-            <span className="muted"> · {dias === 0 ? "hoy" : dias === 1 ? "mañana" : `en ${dias} días`} · sede {e.estado_sede}</span>
-          </Link>
+          <div className="proximo">
+            <Link to={enlace(e.id_evento)}>
+              <b>{e.tipo_evento}</b> · {e.fecha ? fechaCorta(e.fecha) : <span className="muted">Fecha pendiente de aclaración</span>}
+              {dias != null && <span className="muted"> · {dias === 0 ? "hoy" : dias === 1 ? "mañana" : `en ${dias} días`}</span>}
+            </Link>
+            <div className="muted">
+              {e.cliente}
+              {contacto(e.cliente_telefono, e.cliente_email) && ` · ${contacto(e.cliente_telefono, e.cliente_email)}`}
+            </div>
+            <div className="proximo-estados">
+              <span className="muted">Sede: {e.sede_prevista ?? "pendiente de aclaración"}</span>
+              <Estado estado={e.estado_sede === "pendiente" ? "pendiente de consulta" : e.estado_sede} color={COLORES_SEDE[e.estado_sede]} />
+              <span className="muted">
+                · {e.cant_asistentes_estimada != null ? `${Number(e.cant_asistentes_estimada).toLocaleString("es-AR")} asistentes estimados` : "asistentes pendientes de aclaración"} ·
+              </span>
+              <Estado estado={e.estado} color={ESTADOS[e.estado]} />
+              {vencidas > 0 && <Estado estado={`${vencidas} ${vencidas === 1 ? "tarea vencida" : "tareas vencidas"}`} color="var(--red)" />}
+            </div>
+            {e.servicios_sin_confirmar.length > 0 && (
+              <ul className="proximo-detalle">
+                {e.servicios_sin_confirmar.map((s) => (
+                  <li key={s.id_detalle}>
+                    Sin confirmar: <b>{s.servicio}</b> <span className="muted">({s.proveedor ?? "sin proveedor"})</span>{" "}
+                    <Estado estado={s.estado_proveedor} color={s.estado_proveedor === "no_disponible" ? "var(--red)" : "var(--amber)"} />
+                  </li>
+                ))}
+              </ul>
+            )}
+            {e.tareas.length > 0 && (
+              <ul className="proximo-detalle">
+                {e.tareas.map((t) => (
+                  <li key={t.id_tarea} className={t.vencida ? "vencida" : undefined}>
+                    {t.vencida ? "Vencida" : etiqueta(t.estado)}: <b>{t.descripcion}</b>
+                    <span className="muted"> · {t.id_personal === permisos.yo ? "vos" : t.responsable} · {fechaCorta(t.fecha_prevista)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         );
       },
       vacio: "No hay encargos con fecha próxima.",
@@ -106,12 +145,8 @@ export default function Pendientes() {
   ].sort((a, b) => Number(!!b.prioridad) - Number(!!a.prioridad));
 
   return (
-    <main className="main">
-      <div className="page-head">
-        <div>
-          <div className="eyebrow">{fechaLarga()}</div>
-          <h1>Pendientes</h1>
-        </div>
+    <>
+      <div className="pendientes-barra">
         <Button icon={<ReloadOutlined />} onClick={cargar} loading={cargando}>
           Actualizar
         </Button>
@@ -124,7 +159,7 @@ export default function Pendientes() {
           <Card
             key={b.id}
             variant="borderless"
-            className="pendientes-card"
+            className={b.ancho ? "pendientes-card pendientes-ancho" : "pendientes-card"}
             loading={cargando && !datos}
             title={
               <span>
@@ -144,6 +179,6 @@ export default function Pendientes() {
           </Card>
         ))}
       </div>
-    </main>
+    </>
   );
 }

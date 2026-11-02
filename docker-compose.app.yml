@@ -1,0 +1,43 @@
+# Nodo de aplicación (se levanta igual en las 3 máquinas): back + front.
+# La base y el balanceador viven en otra máquina (docker-compose.lb-db.yml).
+#
+#   docker compose -f docker-compose.app.yml up -d --build
+#
+# Requiere en el .env de cada nodo: DB_HOST (IP de la máquina de la base),
+# DB_USER, DB_PASSWORD, DB_NAME, JWT_SECRET (IGUAL en los 3 nodos) y FRONTEND_URL.
+services:
+  back:
+    build: .
+    container_name: eventos-back
+    environment:
+      PORT: 3000
+      DB_HOST: ${DB_HOST:?Definí DB_HOST (IP de la máquina con Postgres) en el .env}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER:?Definí DB_USER en el .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Definí DB_PASSWORD en el .env}
+      DB_NAME: ${DB_NAME:?Definí DB_NAME en el .env}
+      DB_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:?Definí JWT_SECRET en el .env (el mismo en los 3 nodos)}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+    # El back no se publica: solo el front de su mismo nodo le habla (nginx -> back:3000).
+    expose:
+      - "3000"
+    networks:
+      - app_net
+    restart: unless-stopped
+
+  front:
+    build: ./frontend
+    container_name: eventos-front
+    ports:
+      - "${FRONT_PORT:-8081}:80"
+    depends_on:
+      - back
+    networks:
+      - app_net
+    restart: unless-stopped
+
+networks:
+  app_net:
+    driver: bridge

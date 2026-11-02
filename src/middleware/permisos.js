@@ -28,7 +28,7 @@ export const conRol = (req, res, next) => {
 export const soloRoles = verificarRol;
 
 // "Solo en sus eventos": el usuario debe ser el organizador (id_organizador) de todos los
-// eventos que devuelva el resolver. El resolver recibe req y devuelve ids de evento
+// eventos que devuelva el resolver (salvo la responsable, que puede con todos los de su empresa). El resolver recibe req y devuelve ids de evento
 // (o null si el id de la ruta no es válido).
 export const duenoDelEvento = (resolver) => async (req, res, next) => {
     try {
@@ -44,7 +44,9 @@ export const duenoDelEvento = (resolver) => async (req, res, next) => {
         if (eventos.rows.length !== new Set(ids).size) {
             return res.status(404).json({ mensaje: "ese evento no existe" });
         }
-        if (eventos.rows.some((evento) => evento.id_organizador !== req.usuario.id_personal)) {
+        // La responsable (dueña de la empresa) puede trabajar sobre cualquier evento; el organizador, solo sobre los suyos.
+        const esResponsable = req.usuario.roles.includes(RESPONSABLE);
+        if (!esResponsable && eventos.rows.some((evento) => evento.id_organizador !== req.usuario.id_personal)) {
             return res.status(403).json({ mensaje: "Solo el organizador de este evento puede hacer esto" });
         }
 

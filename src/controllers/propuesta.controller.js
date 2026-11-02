@@ -58,9 +58,10 @@ const validarCampos = (body) => {
         }
     }
 
+    const comerciales = textoOpcional(body.condiciones_comerciales, "las condiciones comerciales", 500);
     const condiciones = textoOpcional(body.condiciones_acordadas, "las condiciones acordadas", 500);
     const motivo = textoOpcional(body.motivo_rechazo, "el motivo de rechazo", 500);
-    const error = condiciones.error ?? motivo.error;
+    const error = comerciales.error ?? condiciones.error ?? motivo.error;
     if(error){
         return {error};
     }
@@ -68,6 +69,7 @@ const validarCampos = (body) => {
     return {datos: {
         fecha_emision: fecha_emision?.slice(0, 10) ?? null,
         fecha_respuesta: fecha_respuesta?.slice(0, 10) ?? null,
+        condiciones_comerciales: comerciales.valor,
         condiciones_acordadas: condiciones.valor,
         motivo_rechazo: motivo.valor,
     }};
@@ -130,10 +132,10 @@ export const crearPropuesta = async (req, res) => {
         }
 
         const resultado = await pool.query(`
-            INSERT INTO propuesta(id_evento, fecha_emision, total, estado, condiciones_acordadas)
-            VALUES($1, $2, 0, 'borrador', $3)
+            INSERT INTO propuesta(id_evento, fecha_emision, total, estado, condiciones_comerciales, condiciones_acordadas)
+            VALUES($1, $2, 0, 'borrador', $3, $4)
             RETURNING *`,
-            [idEvento, datos.fecha_emision, datos.condiciones_acordadas]
+            [idEvento, datos.fecha_emision, datos.condiciones_comerciales, datos.condiciones_acordadas]
         );
         res.status(201).json(resultado.rows[0]);
     } catch (error) {
@@ -192,10 +194,6 @@ export const editarPropuesta = async (req, res) => {
             estado = pedido;
         }
 
-        if (estado === "rechazada" && !datos.motivo_rechazo) {
-            await cliente.query("ROLLBACK");
-            return res.status(400).json({ mensaje: "Para rechazar la propuesta hay que registrar el motivo" });
-        }
         if (estado === "pendiente_aprobacion" && estado !== actual.estado) {
             const servicios = await cliente.query(
                 `SELECT 1 FROM detalle_propuesta WHERE id_propuesta = $1 AND NOT descartado LIMIT 1`, [id]);
@@ -211,12 +209,13 @@ export const editarPropuesta = async (req, res) => {
         const resultado = await cliente.query(`
             UPDATE propuesta
             SET fecha_emision = COALESCE($1::date, CASE WHEN $8 THEN CURRENT_DATE END), condiciones_acordadas = $2, motivo_rechazo = $3, estado = $4::text,
+                condiciones_comerciales = $9,
                 fecha_respuesta = CASE WHEN $5 THEN COALESCE($6::date, CURRENT_DATE) ELSE $6::date END,
                 aprobado_por = CASE WHEN $4::text IN ('borrador', 'pendiente_aprobacion') THEN NULL ELSE aprobado_por END,
                 fecha_aprobacion = CASE WHEN $4::text IN ('borrador', 'pendiente_aprobacion') THEN NULL ELSE fecha_aprobacion END
             WHERE id_propuesta = $7
             RETURNING *`,
-            [datos.fecha_emision, datos.condiciones_acordadas, datos.motivo_rechazo, estado, respuesta, datos.fecha_respuesta, id, seEnvia]
+            [datos.fecha_emision, datos.condiciones_acordadas, datos.motivo_rechazo, estado, respuesta, datos.fecha_respuesta, id, seEnvia, datos.condiciones_comerciales]
         );
 
         // Mientras el evento es una solicitud, su estado acompaña a la propuesta. Se mira el estado

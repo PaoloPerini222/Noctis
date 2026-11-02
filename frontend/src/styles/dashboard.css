@@ -104,7 +104,7 @@
 .page-head h1 {
   margin-top: 8px;
   font: 700 36px var(--display);
-  letter-spacing: -.02em;
+  letter-spacing: .02em;
 }
 
 .dash {
@@ -116,6 +116,10 @@
 /* Las tarjetas son <Card> de Ant Design; su cristal está en antd.css. Acá solo el contenido interior. */
 .hero {
   min-height: 220px;
+}
+
+.hero h2 {
+  color: var(--text);
 }
 
 .hero .ant-card-body {
@@ -141,7 +145,7 @@
 
 .hero h2 {
   font: 700 clamp(28px, 3vw, 40px) var(--display);
-  letter-spacing: -.02em;
+  letter-spacing: .02em;
   overflow-wrap: anywhere;
 }
 
@@ -388,4 +392,11 @@
   .mobile-nav a {
     scroll-snap-align: start;
   }
+}
+
+/* Dato con su contacto debajo (ficha del evento): nombre arriba y teléfono / email en una línea aparte. */
+.dato-contacto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }

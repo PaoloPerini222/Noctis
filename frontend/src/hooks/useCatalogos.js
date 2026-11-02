@@ -39,8 +39,11 @@ export default function useCatalogos(nombres) {
     ...datos,
     recargarCatalogos: recargar,
     nombreEvento: (id) => buscar("eventos", "id_evento", id, "tipo_evento", "Evento"),
-    nombreCliente: (id) => buscar("clientes", "id_cliente", id, "nombre", "Cliente"),
-    nombrePersona: (id) => buscar("personal", "id_personal", id, "nombre", "Personal"),
+    nombreCliente: (id) => buscar("clientes", "id_cliente", id, "nombre_completo", "Cliente"),
+    nombrePersona: (id) => buscar("personal", "id_personal", id, "nombre_completo", "Personal"),
+    // Registro completo (para mostrar sus datos de contacto): { nombre_completo, telefono, email... } o undefined.
+    cliente: (id) => (datos.clientes ?? []).find((c) => c.id_cliente === id),
+    persona: (id) => (datos.personal ?? []).find((p) => p.id_personal === id),
     nombreServicio: (id) => buscar("servicios", "id_servicio", id, "nombre", "Servicio"),
     nombreProveedor: (id) => buscar("proveedores", "id_proveedor", id, "nombre", "Proveedor"),
   };

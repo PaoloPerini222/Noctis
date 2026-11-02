@@ -2,8 +2,8 @@
    Pisa los tamaños de landing.css, auth.css y dashboard.css (por eso se importa después). */
 
 .land-title {
-  font-size: clamp(110px, 22vw, 320px);
-  letter-spacing: -.02em;
+  font-size: clamp(90px, 17vw, 250px);
+  letter-spacing: .02em;
   line-height: .8;
 }
 
@@ -13,7 +13,7 @@
 
 .lineup-row b {
   font-size: clamp(48px, 7vw, 96px);
-  letter-spacing: -.02em;
+  letter-spacing: .02em;
 }
 
 .step .n {
@@ -26,12 +26,12 @@
 
 .faq h2 {
   font-size: 80px;
-  letter-spacing: -.02em;
+  letter-spacing: .02em;
 }
 
 .auth-art h2 {
   font-size: clamp(64px, 8vw, 128px);
-  letter-spacing: -.02em;
+  letter-spacing: .02em;
   line-height: .95;
 }
 
@@ -41,17 +41,17 @@
 
 .page-head h1 {
   font-size: 56px;
-  letter-spacing: -.02em;
+  letter-spacing: .02em;
 }
 
 .hero h2 {
   font-size: clamp(36px, 4.4vw, 64px);
-  letter-spacing: -.02em;
+  letter-spacing: .02em;
 }
 
 .pub h1 {
   font-size: clamp(44px, 7vw, 88px);
-  letter-spacing: -.02em;
+  letter-spacing: .02em;
 }
 
 @media (max-width: 960px) {

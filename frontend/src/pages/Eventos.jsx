@@ -9,7 +9,7 @@ import Topbar from "../components/Topbar.jsx";
 import useCatalogos from "../hooks/useCatalogos.js";
 import usePermisos from "../hooks/usePermisos.js";
 import useRecurso from "../hooks/useRecurso.js";
-import { diasHasta, fechaCorta, fechaLarga, hoyISO, soloFecha } from "../utils/formato.js";
+import { diasHasta, fechaCorta, fechaLarga, hoyISO, nombreCompleto, soloFecha } from "../utils/formato.js";
 
 // Pantalla principal del panel: tablero con el próximo evento, la semana actual y la tabla de eventos.
 // No usa PaginaCrud porque tiene más cosas (filtros, calendario semanal, link público).
@@ -62,7 +62,7 @@ export function camposEvento({ clientes, personal, yo, conCliente }) {
     ...(conCliente
       ? [{
           name: "id_cliente", label: "Cliente", type: "select", required: true, full: true,
-          options: clientes.map((c) => ({ value: c.id_cliente, label: c.nombre })),
+          options: clientes.map((c) => ({ value: c.id_cliente, label: nombreCompleto(c) })),
           ayuda: clientes.length ? undefined : "Primero cargá el cliente en la sección Clientes.",
         }]
       : []),
@@ -71,13 +71,13 @@ export function camposEvento({ clientes, personal, yo, conCliente }) {
     { name: "cant_asistentes_estimada", label: "Asistentes estimados", type: "number", step: 1 },
     {
       name: "estado_sede", label: "Disponibilidad de la sede", type: "select", required: true, defecto: "pendiente",
-      options: [{ value: "pendiente", label: "Pendiente" }, { value: "confirmada", label: "Confirmada" }],
+      options: [{ value: "pendiente", label: "Pendiente de consulta" }, { value: "confirmada", label: "Confirmada" }, { value: "no_disponible", label: "No disponible" }],
     },
     {
       name: "id_organizador", label: "Organizador", type: "select", required: true, defecto: yo,
       options: personal
-        .filter((p) => p.roles.some((r) => r.nombre === "organizador"))
-        .map((p) => ({ value: p.id_personal, label: p.nombre })),
+        .filter((p) => p.roles.some((r) => r.nombre === "organizador" || r.nombre === "responsable"))
+        .map((p) => ({ value: p.id_personal, label: nombreCompleto(p) })),
     },
     { name: "necesidades_preferencias", label: "Necesidades y preferencias", type: "textarea" },
   ];

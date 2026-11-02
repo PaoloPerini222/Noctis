@@ -1,9 +1,10 @@
 import { ArrowRightOutlined } from "@ant-design/icons";
 import { Alert, Button, Empty, Segmented, Table } from "antd";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { propuestasApi } from "../api/propuestas.js";
 import Estado from "../components/Estado.jsx";
+import TableroPendientes from "../components/TableroPendientes.jsx";
 import Topbar from "../components/Topbar.jsx";
 import useCatalogos from "../hooks/useCatalogos.js";
 import usePermisos from "../hooks/usePermisos.js";
@@ -28,10 +29,20 @@ const FILTROS = [
   { id: "todas", label: "Todas", test: () => true },
 ];
 
+const VISTAS = [
+  { value: "propuestas", label: "Propuestas" },
+  { value: "pendientes", label: "Pendientes" },
+];
+
 // Listado de propuestas para controlar en qué está cada una. La propuesta se arma y se mueve desde la
 // ficha de su evento (servicios, aprobación, envío, respuesta del cliente).
+// La otra vista es el tablero de pendientes (tareas, servicios sin confirmar y próximos eventos); va en la URL
+// (?vista=pendientes) para poder enlazarla.
 export default function Propuestas() {
   const permisos = usePermisos();
+  const [params, setParams] = useSearchParams();
+  const vista = params.get("vista") === "pendientes" ? "pendientes" : "propuestas";
+  const cambiarVista = (valor) => setParams(valor === "pendientes" ? { vista: valor } : {}, { replace: true });
   const { items, cargando, error, recargar } = useRecurso(propuestasApi, "id_propuesta");
   const { nombreEvento, nombrePersona } = useCatalogos(["eventos", "personal"]);
   const [filtro, setFiltro] = useState(permisos.esResponsable ? "revisar" : "curso");
@@ -66,38 +77,45 @@ export default function Propuestas() {
 
   return (
     <main className="main">
-      <Topbar busqueda={busqueda} onBusqueda={setBusqueda} placeholder="Buscar propuestas…" />
+      <Topbar busqueda={busqueda} onBusqueda={setBusqueda} placeholder="Buscar propuestas…" deshabilitado={vista === "pendientes"} />
       <div className="page-head">
         <div>
           <div className="eyebrow">{fechaLarga()}</div>
           <h1>Propuestas</h1>
         </div>
+        <Segmented value={vista} onChange={cambiarVista} options={VISTAS} />
       </div>
 
-      {error && <Alert type="error" showIcon title={error} action={<Button size="small" onClick={recargar}>Reintentar</Button>} />}
+      {vista === "pendientes" ? (
+        <TableroPendientes />
+      ) : (
+        <>
+          {error && <Alert type="error" showIcon title={error} action={<Button size="small" onClick={recargar}>Reintentar</Button>} />}
 
-      <div className="table-card">
-        <div className="table-bar">
-          <Segmented value={filtro} onChange={setFiltro} options={FILTROS.map((f) => ({ label: f.label, value: f.id }))} />
-          <span className="muted">{cargando ? "Cargando…" : `${visibles.length} ${visibles.length === 1 ? "propuesta" : "propuestas"}`}</span>
-        </div>
-        <Table
-          rowKey="id_propuesta"
-          columns={columnas}
-          dataSource={visibles}
-          loading={cargando}
-          pagination={{ pageSize: 8, hideOnSinglePage: true, showSizeChanger: false }}
-          scroll={{ x: "max-content" }}
-          locale={{
-            emptyText: (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No hay propuestas en esta vista. Las propuestas se crean desde la ficha de cada evento."
-              />
-            ),
-          }}
-        />
-      </div>
+          <div className="table-card">
+            <div className="table-bar">
+              <Segmented value={filtro} onChange={setFiltro} options={FILTROS.map((f) => ({ label: f.label, value: f.id }))} />
+              <span className="muted">{cargando ? "Cargando…" : `${visibles.length} ${visibles.length === 1 ? "propuesta" : "propuestas"}`}</span>
+            </div>
+            <Table
+              rowKey="id_propuesta"
+              columns={columnas}
+              dataSource={visibles}
+              loading={cargando}
+              pagination={{ pageSize: 8, hideOnSinglePage: true, showSizeChanger: false }}
+              scroll={{ x: "max-content" }}
+              locale={{
+                emptyText: (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="No hay propuestas en esta vista. Las propuestas se crean desde la ficha de cada evento."
+                  />
+                ),
+              }}
+            />
+          </div>
+        </>
+      )}
     </main>
   );
 }

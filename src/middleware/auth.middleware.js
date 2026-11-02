@@ -39,7 +39,16 @@ export const verificarToken = async (req, res, next) => {
       JOIN rol r ON r.id_rol = pr.id_rol
       WHERE pr.id_personal = $1`, [datos.id_personal ?? null]);
 
-    req.usuario = { ...datos, id_empresa, roles: roles.rows.map((fila) => fila.nombre) };
+    // La dueña de la empresa (responsable) puede hacer todo lo que hacen el organizador y el coordinador:
+    // en un equipo chico es quien carga clientes, eventos, proveedores y tareas (P18). Ver también usePermisos en el front.
+    const nombres = roles.rows.map((fila) => fila.nombre);
+    if (nombres.includes("responsable")) {
+      for (const rol of ["organizador", "coordinador"]) {
+        if (!nombres.includes(rol)) nombres.push(rol);
+      }
+    }
+
+    req.usuario = { ...datos, id_empresa, roles: nombres };
     next();
   } catch (error) {
     console.error(error);

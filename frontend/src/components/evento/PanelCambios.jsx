@@ -40,7 +40,9 @@ export default function PanelCambios({ evento }) {
   return (
     <div className="panel-evento">
       <div className="panel-bar">
-        <span className="muted">Un cambio de fecha, sede o asistentes obliga a revisar proveedores, tareas y condiciones.</span>
+        <span className="muted">
+          Un cambio de fecha, sede o asistentes obliga a revisar proveedores, tareas y condiciones. Con el encargo confirmado, el cambio de fecha o de sede y la pérdida de confirmación de un proveedor se anotan solos: falta registrar su revisión.
+        </span>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditando("nuevo")}>
           Registrar cambio
         </Button>

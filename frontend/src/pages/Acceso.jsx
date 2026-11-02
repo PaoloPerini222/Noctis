@@ -87,9 +87,14 @@ export default function Acceso({ modo }) {
           </div>
 
           {!esLogin && (
-            <Form.Item name="nombre" label="Nombre" rules={[{ required: true, message: "Ingresá tu nombre" }]}>
-              <Input prefix={<UserOutlined />} placeholder="Nombre Apellido" autoComplete="name" />
-            </Form.Item>
+            <>
+              <Form.Item name="nombre" label="Nombre" rules={[{ required: true, message: "Ingresá tu nombre" }]}>
+                <Input prefix={<UserOutlined />} placeholder="Nombre" autoComplete="given-name" />
+              </Form.Item>
+              <Form.Item name="apellido" label="Apellido" rules={[{ required: true, message: "Ingresá tu apellido" }]}>
+                <Input prefix={<UserOutlined />} placeholder="Apellido" autoComplete="family-name" />
+              </Form.Item>
+            </>
           )}
 
           {!esLogin && (
