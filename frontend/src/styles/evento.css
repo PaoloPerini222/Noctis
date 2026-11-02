@@ -84,6 +84,12 @@
 
 /* ---------- Pendientes ---------- */
 
+.pendientes-barra {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
 .pendientes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));

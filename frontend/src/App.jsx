@@ -13,7 +13,6 @@ const Equipo = lazy(() => import("./pages/Equipo.jsx"));
 const EventoDetalle = lazy(() => import("./pages/EventoDetalle.jsx"));
 const EventoPublico = lazy(() => import("./pages/EventoPublico.jsx"));
 const Eventos = lazy(() => import("./pages/Eventos.jsx"));
-const Pendientes = lazy(() => import("./pages/Pendientes.jsx"));
 const Propuestas = lazy(() => import("./pages/Propuestas.jsx"));
 const Proveedores = lazy(() => import("./pages/Proveedores.jsx"));
 const Servicios = lazy(() => import("./pages/Servicios.jsx"));
@@ -21,7 +20,7 @@ const Tareas = lazy(() => import("./pages/Tareas.jsx"));
 
 // Mapa de rutas de toda la app.
 //   Públicas:   /  /login  /registro  /evento/:token (enlace que abre el cliente)
-//   Privadas:   /pendientes /eventos /eventos/:id (ficha) /propuestas /tareas /clientes
+//   Privadas:   /eventos /eventos/:id (ficha) /propuestas (con la vista Pendientes) /tareas /clientes
 //               /proveedores /servicios /equipo /empresas
 //               Van dentro de RutaProtegida (exige sesión) y de Layout (sidebar + barra móvil).
 //   Cualquier otra URL vuelve a la landing.
@@ -44,7 +43,8 @@ export default function App() {
           </RutaProtegida>
         }
       >
-        <Route path="/pendientes" element={<Pendientes />} />
+        {/* Los pendientes ahora son una vista de Propuestas: el enlace viejo sigue andando. */}
+        <Route path="/pendientes" element={<Navigate to="/propuestas?vista=pendientes" replace />} />
         <Route path="/eventos" element={<Eventos />} />
         <Route path="/eventos/:id" element={<EventoDetalle />} />
         <Route path="/clientes" element={<Clientes />} />

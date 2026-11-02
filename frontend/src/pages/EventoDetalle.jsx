@@ -23,7 +23,7 @@ const CERRADOS = ["realizado", "cancelado"];
 // Ficha de un evento: todo lo del encargo en un solo lugar, para no confundir los compromisos de un evento
 // con los de otro. Arriba los datos y las acciones del evento; abajo, pestañas con la propuesta y sus
 // servicios, las tareas, los cambios relevantes, los servicios descartados y el cierre.
-// La pestaña activa va en la URL (?tab=tareas) para poder enlazar directo desde Pendientes.
+// La pestaña activa va en la URL (?tab=tareas) para poder enlazar directo desde el tablero de Pendientes (Propuestas).
 export default function EventoDetalle() {
   const { id } = useParams();
   const [params, setParams] = useSearchParams();

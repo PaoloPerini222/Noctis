@@ -3,15 +3,15 @@ import { Alert, Badge, Button, Card, Empty } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { pendientesApi } from "../api/equipo.js";
-import Estado, { COLORES_SEDE } from "../components/Estado.jsx";
+import Estado, { COLORES_SEDE } from "./Estado.jsx";
 import usePermisos from "../hooks/usePermisos.js";
 import { mensajeError } from "../services/api.js";
-import { contacto, diasHasta, etiqueta, fechaCorta, fechaLarga, moneda } from "../utils/formato.js";
-import { ESTADOS } from "./Eventos.jsx";
+import { contacto, diasHasta, etiqueta, fechaCorta, moneda } from "../utils/formato.js";
+import { ESTADOS } from "../pages/Eventos.jsx";
 
 // Tablero para controlar y priorizar: lo pendiente y lo vencido de todos los eventos en curso.
-// Cada bloque lleva a la ficha del evento, donde se resuelve.
-export default function Pendientes() {
+// Cada bloque lleva a la ficha del evento, donde se resuelve. Vive dentro de la pantalla de Propuestas (vista "Pendientes").
+export default function TableroPendientes() {
   const permisos = usePermisos();
   const [datos, setDatos] = useState(null);
   const [error, setError] = useState("");
@@ -145,12 +145,8 @@ export default function Pendientes() {
   ].sort((a, b) => Number(!!b.prioridad) - Number(!!a.prioridad));
 
   return (
-    <main className="main">
-      <div className="page-head">
-        <div>
-          <div className="eyebrow">{fechaLarga()}</div>
-          <h1>Pendientes</h1>
-        </div>
+    <>
+      <div className="pendientes-barra">
         <Button icon={<ReloadOutlined />} onClick={cargar} loading={cargando}>
           Actualizar
         </Button>
@@ -183,6 +179,6 @@ export default function Pendientes() {
           </Card>
         ))}
       </div>
-    </main>
+    </>
   );
 }

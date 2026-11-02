@@ -5,7 +5,7 @@ import { rolDe } from "./Layout.jsx";
 
 // Barra superior de cada página del panel: buscador (el texto lo maneja la página), empresa y rol del usuario.
 // Las dos etiquetas usan los colores del tema (no los de antd): empresa resaltada con el color principal, rol en neutro.
-export default function Topbar({ busqueda, onBusqueda, placeholder }) {
+export default function Topbar({ busqueda, onBusqueda, placeholder, deshabilitado = false }) {
   const { usuario } = useAuth();
   return (
     <div className="topbar">
@@ -13,6 +13,7 @@ export default function Topbar({ busqueda, onBusqueda, placeholder }) {
         className="search"
         size="large"
         allowClear
+        disabled={deshabilitado}
         prefix={<SearchOutlined />}
         value={busqueda}
         onChange={(e) => onBusqueda(e.target.value)}
