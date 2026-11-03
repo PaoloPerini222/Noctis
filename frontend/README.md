@@ -46,7 +46,7 @@ src/
 | `/login`, `/registro` | Acceso (misma pantalla, dos modos) | Pública |
 | `/evento/:token` | Enlace del cliente: ve y responde su propuesta | Pública |
 | `/eventos` | Tablero de eventos | Con sesión |
-| `/propuestas` | Listado de propuestas con dos vistas: **Propuestas** (tabla con filtros) y **Pendientes** (`?vista=pendientes`: tareas vencidas y pendientes, servicios sin confirmar, propuestas para revisar y próximos eventos) | Con sesión |
+| `/propuestas` | Listado de propuestas con el botón **Nueva propuesta** (organizador o responsable: elige un evento abierto sin propuesta, la crea en borrador y abre su ficha) y dos vistas: **Propuestas** (tabla con filtros) y **Pendientes** (`?vista=pendientes`: tareas vencidas y pendientes, servicios sin confirmar, propuestas para revisar y próximos eventos) | Con sesión |
 | `/pendientes` | Redirige a `/propuestas?vista=pendientes` (el tablero ya no tiene pantalla ni entrada propia en el menú) | Con sesión |
 | `/clientes`, `/empresas`, `/tareas` | Listado + alta/edición/baja | Con sesión |
 

@@ -1,14 +1,16 @@
-import { ArrowRightOutlined } from "@ant-design/icons";
-import { Alert, Button, Empty, Segmented, Table } from "antd";
+import { ArrowRightOutlined, PlusOutlined } from "@ant-design/icons";
+import { Alert, Button, Empty, Segmented, Space, Table, Tooltip } from "antd";
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { propuestasApi } from "../api/propuestas.js";
 import Estado from "../components/Estado.jsx";
+import FormModal from "../components/FormModal.jsx";
 import TableroPendientes from "../components/TableroPendientes.jsx";
 import Topbar from "../components/Topbar.jsx";
 import useCatalogos from "../hooks/useCatalogos.js";
 import usePermisos from "../hooks/usePermisos.js";
 import useRecurso from "../hooks/useRecurso.js";
+import { mensajeError } from "../services/api.js";
 import { fechaCorta, fechaLarga, moneda } from "../utils/formato.js";
 
 // Estado de la propuesta -> color de su etiqueta.
@@ -29,6 +31,8 @@ const FILTROS = [
   { id: "todas", label: "Todas", test: () => true },
 ];
 
+const EVENTOS_CERRADOS = ["realizado", "cancelado", "rechazada"];
+
 const VISTAS = [
   { value: "propuestas", label: "Propuestas" },
   { value: "pendientes", label: "Pendientes" },
@@ -44,9 +48,22 @@ export default function Propuestas() {
   const vista = params.get("vista") === "pendientes" ? "pendientes" : "propuestas";
   const cambiarVista = (valor) => setParams(valor === "pendientes" ? { vista: valor } : {}, { replace: true });
   const { items, cargando, error, recargar } = useRecurso(propuestasApi, "id_propuesta");
-  const { nombreEvento, nombrePersona } = useCatalogos(["eventos", "personal"]);
+  const { eventos, nombreEvento, nombrePersona } = useCatalogos(["eventos", "personal"]);
+  const navigate = useNavigate();
+  const [creando, setCreando] = useState(false);
   const [filtro, setFiltro] = useState(permisos.esResponsable ? "revisar" : "curso");
   const [busqueda, setBusqueda] = useState("");
+
+  // Eventos a los que esta persona les puede armar la propuesta: los suyos (la responsable, todos), abiertos y sin propuesta.
+  const sinPropuesta = eventos.filter((e) => permisos.esDuenoDe(e) && !EVENTOS_CERRADOS.includes(e.estado) && !items.some((p) => p.id_evento === e.id_evento));
+  const crearPropuesta = async ({ id_evento }) => {
+    try {
+      await propuestasApi.crear({ id_evento });
+    } catch (e) {
+      throw new Error(mensajeError(e, "No se pudo crear la propuesta"));
+    }
+    navigate(`/eventos/${id_evento}?tab=propuesta`); // se abre la ficha para cargar los servicios
+  };
 
   const q = busqueda.trim().toLowerCase();
   const visibles = items
@@ -83,7 +100,16 @@ export default function Propuestas() {
           <div className="eyebrow">{fechaLarga()}</div>
           <h1>Propuestas</h1>
         </div>
-        <Segmented value={vista} onChange={cambiarVista} options={VISTAS} />
+        <Space wrap>
+          {permisos.esOrganizador && vista === "propuestas" && (
+            <Tooltip title={sinPropuesta.length || cargando ? undefined : "No tenés eventos abiertos sin propuesta. Cargá un evento nuevo o pedile a la responsable que te asigne uno."}>
+              <Button type="primary" icon={<PlusOutlined />} disabled={!sinPropuesta.length} onClick={() => setCreando(true)}>
+                Nueva propuesta
+              </Button>
+            </Tooltip>
+          )}
+          <Segmented value={vista} onChange={cambiarVista} options={VISTAS} />
+        </Space>
       </div>
 
       {vista === "pendientes" ? (
@@ -108,13 +134,27 @@ export default function Propuestas() {
                 emptyText: (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="No hay propuestas en esta vista. Las propuestas se crean desde la ficha de cada evento."
+                    description="No hay propuestas en esta vista. Para armar una, usá «Nueva propuesta» o abrí el evento."
                   />
                 ),
               }}
             />
           </div>
         </>
+      )}
+
+      {creando && (
+        <FormModal
+          titulo="Nueva propuesta"
+          campos={[{
+            name: "id_evento", label: "Evento", type: "select", required: true, full: true,
+            options: sinPropuesta.map((e) => ({ value: e.id_evento, label: `${e.tipo_evento}${e.fecha ? ` · ${fechaCorta(e.fecha)}` : ""}` })),
+            ayuda: "Solo aparecen los eventos abiertos que todavía no tienen propuesta. Después cargás los servicios en la ficha del evento.",
+          }]}
+          item={null}
+          onGuardar={crearPropuesta}
+          onCerrar={() => setCreando(false)}
+        />
       )}
     </main>
   );
