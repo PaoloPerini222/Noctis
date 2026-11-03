@@ -1,7 +1,6 @@
 import bcrypt from "bcryptjs";
 import pool from "../data/db.js";
 import { ADMIN } from "../middleware/permisos.js";
-import { SERVICIOS_HABITUALES } from "./servicios.js";
 
 // Tablas con id_empresa y su clave primaria: con esto se verifica que un id pertenezca a la empresa.
 const CLAVES = {
@@ -25,7 +24,7 @@ export const esDeLaEmpresa = async (tabla, id, idEmpresa, db = pool) => {
     return resultado.rows.length > 0;
 };
 
-// Crea la empresa con los servicios habituales como punto de partida (después se editan a gusto).
+// Crea la empresa vacía: cada empresa carga sus propios servicios, salones, clientes, etc.
 // Va dentro de la transacción de quien llama; devuelve el id de la empresa.
 export const insertarEmpresa = async (db, { nombre, cuit, email, telefono, direccion }) => {
     const resultado = await db.query(`
@@ -34,11 +33,7 @@ export const insertarEmpresa = async (db, { nombre, cuit, email, telefono, direc
         RETURNING id_empresa`,
         [nombre, cuit, email ?? null, telefono ?? null, direccion ?? null]
     );
-    const idEmpresa = resultado.rows[0].id_empresa;
-    for (const { nombre: servicio, descripcion, equipamiento } of SERVICIOS_HABITUALES) {
-        await db.query(`INSERT INTO servicio (nombre, descripcion, equipamiento, id_empresa) VALUES ($1, $2, $3, $4)`, [servicio, descripcion, equipamiento, idEmpresa]);
-    }
-    return idEmpresa;
+    return resultado.rows[0].id_empresa;
 };
 
 // Crea el usuario, la persona de la empresa y le da el rol de admin (dentro de la transacción de quien llama).

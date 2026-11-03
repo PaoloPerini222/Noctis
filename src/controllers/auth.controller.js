@@ -32,7 +32,7 @@ const datosPublicos = (usuario) => ({
   token_reservas: usuario.token_reservas ?? null
 });
 
-// Quien se registra crea su propia empresa (con los servicios habituales) y queda como su admin, todo en un paso.
+// Quien se registra crea su propia empresa (vacía, sin datos de nadie más) y queda como su admin, todo en un paso.
 export const registrar = async (req, res) => {
   const { nombre, apellido, email, password, empresa } = req.body ?? {};
 
