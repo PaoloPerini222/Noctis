@@ -1,5 +1,5 @@
 import { ArrowLeftOutlined, CheckOutlined, CloseCircleOutlined, CloseOutlined, EditOutlined, FlagOutlined, LinkOutlined } from "@ant-design/icons";
-import { Alert, App, Button, Descriptions, Empty, Popconfirm, Result, Skeleton, Space, Table, Tabs, Tooltip } from "antd";
+import { Alert, App, Button, Descriptions, Empty, Popconfirm, Result, Skeleton, Space, Table, Tabs } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { eventosApi } from "../api/eventos.js";
@@ -87,16 +87,19 @@ export default function EventoDetalle() {
   const acciones = [];
   if (puede && evento.estado === "propuesta") {
     acciones.push(
-      // La reserva se acepta cuando los proveedores de todos sus servicios confirmaron (el back lo vuelve a verificar).
-      evento.servicios_sin_confirmar?.length ? (
-        <Tooltip key="aceptar" title={`Falta que confirmen: ${evento.servicios_sin_confirmar.join(", ")}`}>
-          <Button type="primary" icon={<CheckOutlined />} disabled>Aceptar reserva</Button>
-        </Tooltip>
-      ) : (
-        <Popconfirm key="aceptar" title="¿Aceptar esta reserva?" description="Todos los proveedores confirmaron. El evento queda confirmado para esa fecha." okText="Sí, aceptar" cancelText="Volver" onConfirm={() => cambiarEstado("confirmado", "Reserva aceptada: el evento quedó confirmado")}>
-          <Button type="primary" icon={<CheckOutlined />}>Aceptar reserva</Button>
-        </Popconfirm>
-      ),
+      // Se puede aceptar aunque algún proveedor no haya confirmado: solo se avisa en la confirmación.
+      <Popconfirm
+        key="aceptar"
+        title="¿Aceptar esta reserva?"
+        description={evento.servicios_sin_confirmar?.length
+          ? `Todavía no confirmaron: ${evento.servicios_sin_confirmar.join(", ")}. El evento queda igual confirmado para esa fecha.`
+          : "El evento queda confirmado para esa fecha."}
+        okText="Sí, aceptar"
+        cancelText="Volver"
+        onConfirm={() => cambiarEstado("confirmado", "Reserva aceptada: el evento quedó confirmado")}
+      >
+        <Button type="primary" icon={<CheckOutlined />}>Aceptar reserva</Button>
+      </Popconfirm>,
       <Popconfirm key="rechazar" title="¿Rechazar esta reserva?" description="La fecha vuelve a quedar libre." okText="Sí, rechazar" cancelText="Volver" okButtonProps={{ danger: true }} onConfirm={() => cambiarEstado("rechazado", "Reserva rechazada")}>
         <Button danger icon={<CloseOutlined />}>Rechazar</Button>
       </Popconfirm>

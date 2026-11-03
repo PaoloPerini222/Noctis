@@ -69,7 +69,7 @@ export default function AvisarTodos({ evento, servicios, onCambio }) {
               type="info"
               showIcon
               title={`Falta que confirmen: ${faltan.join(", ")}.`}
-              description="Se abre un chat de WhatsApp por proveedor con la consulta lista. Cuando te contesten, marcá ✓ (puede) o ✗ (no puede). Si uno no puede, consultale a otro del mismo servicio."
+              description="Se abre un chat de WhatsApp por proveedor con la consulta lista. Cuando te contesten, marcá ✓ (puede) o ✗ (no puede). Si uno no puede, consultale a otro del mismo servicio. Consultar es opcional: podés aceptar la reserva igual."
             />
           )}
           <div className="avisar-todos-lista">

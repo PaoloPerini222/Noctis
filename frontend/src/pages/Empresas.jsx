@@ -17,11 +17,11 @@ const config = {
     { titulo: "Empresa", render: (e) => e.nombre },
     { titulo: "CUIT", render: (e) => e.cuit },
     {
-      titulo: "Admins",
+      titulo: "Usuario",
       render: (e) =>
         e.admins.length
           ? e.admins.map((r) => r.nombre).join(", ")
-          : <Estado estado="Sin admin" color="var(--red)" />,
+          : <Estado estado="Sin usuario" color="var(--red)" />,
     },
     { titulo: "Personal", render: (e) => e.personal },
     { titulo: "Email", render: (e) => e.email ?? "—" },

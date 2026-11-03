@@ -303,14 +303,7 @@ export const editarEvento = async (req, res) => {
                 await conexion.query("rollback");
                 return res.status(400).json({mensaje: "para confirmar el evento se requiere la fecha"});
             }
-            // Una reserva se acepta cuando los proveedores de todos sus servicios confirmaron que pueden ese día.
-            if(antes.estado === "propuesta" && datos.estado === "confirmado"){
-                const faltan = serviciosSinConfirmar(await serviciosDelEvento(conexion, idEvento));
-                if(faltan.length > 0){
-                    await conexion.query("rollback");
-                    return res.status(409).json({mensaje: `falta que un proveedor confirme que está disponible para: ${faltan.join(", ")}`});
-                }
-            }
+            // La reserva se puede aceptar aunque falte que algún proveedor confirme: consultarles es opcional.
         }
 
         // Quien acepta una reserva que entró sin organizador queda como su organizador.

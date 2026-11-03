@@ -1,5 +1,5 @@
 import { CheckOutlined, CloseCircleOutlined, CloseOutlined, DeleteOutlined, ExportOutlined, FlagOutlined, LinkOutlined } from "@ant-design/icons";
-import { Alert, App, Button, Descriptions, Modal, Popconfirm, Skeleton, Space, Table, Tooltip } from "antd";
+import { Alert, App, Button, Descriptions, Modal, Popconfirm, Skeleton, Space, Table } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { eventosApi } from "../../api/eventos.js";
@@ -53,7 +53,7 @@ export default function DetalleReserva({ evento, onCerrar, onCambio }) {
 
   const ev = detalle ?? evento;
   const servicios = detalle?.detalle_servicios ?? [];
-  // La reserva se acepta cuando los proveedores de todos sus servicios confirmaron (el back lo vuelve a verificar).
+  // Se puede aceptar aunque algún proveedor no haya confirmado: solo se avisa en la confirmación.
   const faltan = detalle?.servicios_sin_confirmar ?? [];
 
   const acciones = [];
@@ -62,12 +62,17 @@ export default function DetalleReserva({ evento, onCerrar, onCambio }) {
       <Popconfirm key="rechazar" title="¿Rechazar esta reserva?" description="La fecha vuelve a quedar libre." okText="Sí, rechazar" cancelText="Volver" okButtonProps={{ danger: true }} onConfirm={() => cambiarEstado("rechazado", "Reserva rechazada")}>
         <Button danger icon={<CloseOutlined />}>Rechazar</Button>
       </Popconfirm>,
-      faltan.length > 0 || !detalle ? (
-        <Tooltip key="aceptar" title={detalle ? `Falta que confirmen: ${faltan.join(", ")}` : undefined}>
-          <Button type="primary" icon={<CheckOutlined />} disabled>Aceptar</Button>
-        </Tooltip>
+      !detalle ? (
+        <Button key="aceptar" type="primary" icon={<CheckOutlined />} disabled>Aceptar</Button>
       ) : (
-        <Popconfirm key="aceptar" title="¿Aceptar esta reserva?" description="Todos los proveedores confirmaron. Pasa a Próximos como evento confirmado." okText="Sí, aceptar" cancelText="Volver" onConfirm={() => cambiarEstado("confirmado", "Reserva aceptada: pasó a Próximos")}>
+        <Popconfirm
+          key="aceptar"
+          title="¿Aceptar esta reserva?"
+          description={faltan.length ? `Todavía no confirmaron: ${faltan.join(", ")}. Pasa igual a Próximos como evento confirmado.` : "Pasa a Próximos como evento confirmado."}
+          okText="Sí, aceptar"
+          cancelText="Volver"
+          onConfirm={() => cambiarEstado("confirmado", "Reserva aceptada: pasó a Próximos")}
+        >
           <Button type="primary" icon={<CheckOutlined />}>Aceptar</Button>
         </Popconfirm>
       )
