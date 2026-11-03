@@ -9,14 +9,14 @@ import { useAuth } from "../context/AuthContext.jsx";
 // Los botones y el FAQ (acordeón) son de Ant Design.
 const FUNCIONES = [
   { titulo: "Eventos", texto: "Fecha, sede, asistentes y estado de cada fiesta.", color: "var(--pink)" },
-  { titulo: "Roles", texto: "Cada persona del equipo con sus permisos.", color: "var(--amber)" },
+  { titulo: "Salones", texto: "Cada salón con su propia agenda: un evento por salón y por día.", color: "var(--amber)" },
   { titulo: "Calendario", texto: "Toda la temporada, semana por semana.", color: "var(--lime)" },
-  { titulo: "En vivo", texto: "Qué está listo, qué falta y quién está a cargo.", color: "var(--cyan)" },
+  { titulo: "Proveedores", texto: "Avisales por WhatsApp cuando reservan su servicio.", color: "var(--cyan)" },
 ];
 
 const PASOS = [
-  { n: 1, titulo: "Registrá tu equipo", texto: "Empresas, clientes y personal.", color: "var(--pink)" },
-  { n: 2, titulo: "Sumá a tu equipo", texto: "Admins con acceso al panel.", color: "var(--amber)" },
+  { n: 1, titulo: "Creá tu cuenta", texto: "Elegí tu empresa y entrá al panel.", color: "var(--pink)" },
+  { n: 2, titulo: "Armá tu oferta", texto: "Salones, servicios y proveedores.", color: "var(--amber)" },
   { n: 3, titulo: "Publicá la fiesta", texto: "Compartí tu link y aceptá reservas.", color: "var(--cyan)" },
 ];
 
