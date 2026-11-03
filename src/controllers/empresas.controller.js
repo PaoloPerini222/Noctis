@@ -1,8 +1,7 @@
-import bcrypt from "bcryptjs";
 import pool from "../data/db.js";
 import { parseId, REGEX_EMAIL } from "../utils/validaciones.js";
 import { ADMIN } from "../middleware/permisos.js";
-import { SERVICIOS_HABITUALES } from "../utils/servicios.js";
+import { errorDeUnicidad, insertarAdmin, insertarEmpresa } from "../utils/empresa.js";
 
 // Una empresa nueva necesita su primer admin, que después suma al resto del equipo.
 // Valida {nombre, email, password}; devuelve {error} o {valor}.
@@ -19,20 +18,6 @@ const validarAdmin = (datos) => {
     const apellido = typeof datos?.apellido === "string" && datos.apellido.trim() ? datos.apellido.trim() : null;
     if (apellido && apellido.length > 100) return { error: "El apellido del admin no puede superar los 100 caracteres" };
     return { valor: { nombre, apellido, email, password } };
-};
-
-// Crea el usuario, la persona de la empresa y le da el rol de admin (dentro de la transacción de quien llama).
-const insertarAdmin = async (db, idEmpresa, { nombre, apellido, email, password }) => {
-    const usuario = await db.query(`INSERT INTO usuario (email, password_hash) VALUES ($1, $2) RETURNING id_usuario`, [email, await bcrypt.hash(password, 10)]);
-    const personal = await db.query(`INSERT INTO personal (nombre, apellido, usuario_id, id_empresa) VALUES ($1, $2, $3, $4) RETURNING id_personal`, [nombre, apellido, usuario.rows[0].id_usuario, idEmpresa]);
-    await db.query(`INSERT INTO personal_rol (id_personal, id_rol) SELECT $1, id_rol FROM rol WHERE nombre = $2`, [personal.rows[0].id_personal, ADMIN]);
-    return personal.rows[0].id_personal;
-};
-
-// Errores de unicidad: el cuit de la empresa o el email del admin.
-const errorDeUnicidad = (error) => {
-    if (error.code !== "23505") return null;
-    return error.constraint?.includes("cuit") ? "Ya existe una empresa con ese CUIT" : "Ese email ya está registrado";
 };
 
 // Lista de empresas con quiénes son sus admins y cuánta gente tienen.
@@ -85,17 +70,7 @@ export const crearEmpresa = async (req, res) => {
         }
 
         await cliente.query("BEGIN");
-        const resultado = await cliente.query(`
-            INSERT INTO empresas(nombre, cuit, email, telefono, direccion)
-            VALUES($1, $2, $3, $4, $5)
-            RETURNING id_empresa`,
-            [nombre.trim(), cuit.trim(), email ?? null, telefono ?? null, direccion ?? null]
-        );
-        const idEmpresa = resultado.rows[0].id_empresa;
-        // Arranca con los servicios habituales como punto de partida (después se editan a gusto).
-        for (const { nombre: servicio, descripcion, equipamiento } of SERVICIOS_HABITUALES) {
-            await cliente.query(`INSERT INTO servicio (nombre, descripcion, equipamiento, id_empresa) VALUES ($1, $2, $3, $4)`, [servicio, descripcion, equipamiento, idEmpresa]);
-        }
+        const idEmpresa = await insertarEmpresa(cliente, { nombre: nombre.trim(), cuit: cuit.trim(), email, telefono, direccion });
         if (dueno) await insertarAdmin(cliente, idEmpresa, dueno);
         await cliente.query("COMMIT");
 

@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import pool from "../data/db.js";
 import {parseId} from "../utils/validaciones.js";
+import { errorDeUnicidad, insertarAdmin, insertarEmpresa } from "../utils/empresa.js";
 
 const normalizarEmail = (email) => String(email).trim().toLowerCase();
 
@@ -43,18 +44,22 @@ export const empresasParaRegistro = async (req, res) => {
   }
 };
 
+// Quien se registra puede crear su propia empresa (queda como su admin) o sumarse a una que ya existe.
 export const registrar = async (req, res) => {
   const { nombre, apellido, email, password } = req.body ?? {};
 
   if (!nombre?.trim() || !email?.trim() || !password) {
     return res.status(400).json({ mensaje: "Faltan datos" });
   }
+  if (password.length < 8) {
+    return res.status(400).json({ mensaje: "La contraseña debe tener al menos 8 caracteres" });
+  }
+  if (req.body.empresa) {
+    return registrarConEmpresa(req, res);
+  }
   const idEmpresa = parseId(req.body.id_empresa);
   if (idEmpresa === null) {
     return res.status(400).json({ mensaje: "Elegí la empresa a la que pertenecés" });
-  }
-  if (password.length < 8) {
-    return res.status(400).json({ mensaje: "La contraseña debe tener al menos 8 caracteres" });
   }
 
   const cliente = await pool.connect();
@@ -91,6 +96,50 @@ export const registrar = async (req, res) => {
       return res.status(409).json({ mensaje: "El email ya está registrado" });
     }
     res.status(500).json({ mensaje: "Error al registrar el usuario" });
+  } finally {
+    cliente.release();
+  }
+};
+
+// Crea la empresa (con los servicios habituales) y a quien se registra como su admin, todo en un paso.
+const registrarConEmpresa = async (req, res) => {
+  const { nombre, apellido, email, password, empresa } = req.body;
+  const nombreEmpresa = typeof empresa?.nombre === "string" ? empresa.nombre.trim() : "";
+  const cuit = typeof empresa?.cuit === "string" ? empresa.cuit.trim() : "";
+  if (!nombreEmpresa || !cuit) {
+    return res.status(400).json({ mensaje: "Ingresá el nombre y el CUIT de tu empresa" });
+  }
+  if (nombreEmpresa.length > 150) {
+    return res.status(400).json({ mensaje: "El nombre de la empresa no puede superar los 150 caracteres" });
+  }
+  if (cuit.length > 13) {
+    return res.status(400).json({ mensaje: "El CUIT no puede superar los 13 caracteres" });
+  }
+
+  const cliente = await pool.connect();
+  try {
+    await cliente.query("BEGIN");
+    const idEmpresa = await insertarEmpresa(cliente, { nombre: nombreEmpresa, cuit });
+    const idPersonal = await insertarAdmin(cliente, idEmpresa, {
+      nombre: nombre.trim().slice(0, 100),
+      apellido: typeof apellido === "string" && apellido.trim() ? apellido.trim().slice(0, 100) : null,
+      email: normalizarEmail(email),
+      password
+    });
+    await cliente.query("COMMIT");
+
+    res.status(201).json({
+      id_personal: idPersonal,
+      nombre: [nombre.trim(), typeof apellido === "string" ? apellido.trim() : ""].filter(Boolean).join(" "),
+      email: normalizarEmail(email),
+      id_empresa: idEmpresa
+    });
+  } catch (error) {
+    await cliente.query("ROLLBACK");
+    const duplicado = errorDeUnicidad(error);
+    if (duplicado) return res.status(409).json({ mensaje: duplicado });
+    console.error(error);
+    res.status(500).json({ mensaje: "Error al crear la empresa" });
   } finally {
     cliente.release();
   }

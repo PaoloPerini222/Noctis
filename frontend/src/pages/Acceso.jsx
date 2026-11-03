@@ -1,5 +1,5 @@
-import { ArrowLeftOutlined, BankOutlined, LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
-import { Alert, Button, Form, Input, Segmented, Select } from "antd";
+import { ArrowLeftOutlined, BankOutlined, IdcardOutlined, LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
+import { Alert, Button, Form, Input, Radio, Segmented, Select } from "antd";
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import BotonTema from "../components/BotonTema.jsx";
@@ -17,27 +17,32 @@ export default function Acceso({ modo }) {
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [empresas, setEmpresas] = useState([]);
+  // Al registrarse: "crear" su propia empresa (queda como admin) o "unirse" a una que ya existe.
+  const [tipoEmpresa, setTipoEmpresa] = useState("crear");
 
   // Al pasar de login a registro (o al revés) se limpia el error anterior.
   useEffect(() => setError(""), [modo]);
 
-  // Al crear la cuenta hay que elegir a qué empresa pertenece quien se registra.
+  // Para sumarse a una empresa hay que elegirla de la lista.
   useEffect(() => {
-    if (esLogin) return;
+    if (esLogin || tipoEmpresa !== "unirse") return;
     listarEmpresas()
       .then(setEmpresas)
       .catch((err) => setError(mensajeError(err, "No se pudieron cargar las empresas")));
-  }, [esLogin]);
+  }, [esLogin, tipoEmpresa]);
 
   // Si ya hay sesión no tiene sentido ver esta pantalla.
   if (usuario) return <Navigate to="/eventos" replace />;
 
-  // valores = { nombre?, id_empresa?, email, password } ya validados por antd.
+  // valores = { nombre?, apellido?, id_empresa? | nombre_empresa? + cuit?, email, password } ya validados por antd.
   const enviar = async (valores) => {
     setError("");
     setEnviando(true);
     try {
-      if (!esLogin) await registrar(valores);
+      if (!esLogin) {
+        const { nombre_empresa, cuit, id_empresa, ...persona } = valores;
+        await registrar(tipoEmpresa === "crear" ? { ...persona, empresa: { nombre: nombre_empresa, cuit } } : { ...persona, id_empresa });
+      }
       await ingresar(valores.email, valores.password);
       navigate("/eventos");
     } catch (err) {
@@ -98,7 +103,33 @@ export default function Acceso({ modo }) {
           )}
 
           {!esLogin && (
-            <Form.Item name="id_empresa" label="Empresa" rules={[{ required: true, message: "Elegí tu empresa" }]}>
+            <Form.Item label="Empresa">
+              <Radio.Group
+                optionType="button"
+                buttonStyle="solid"
+                value={tipoEmpresa}
+                onChange={(e) => setTipoEmpresa(e.target.value)}
+                options={[
+                  { label: "Crear mi empresa", value: "crear" },
+                  { label: "Sumarme a una", value: "unirse" },
+                ]}
+              />
+            </Form.Item>
+          )}
+
+          {!esLogin && tipoEmpresa === "crear" && (
+            <>
+              <Form.Item name="nombre_empresa" label="Nombre de la empresa" rules={[{ required: true, message: "Ingresá el nombre de tu empresa" }, { max: 150, message: "Máximo 150 caracteres" }]}>
+                <Input prefix={<BankOutlined />} placeholder="Como la van a ver tus clientes" autoComplete="organization" />
+              </Form.Item>
+              <Form.Item name="cuit" label="CUIT" rules={[{ required: true, message: "Ingresá el CUIT" }, { max: 13, message: "Máximo 13 caracteres" }]}>
+                <Input prefix={<IdcardOutlined />} placeholder="30-12345678-9" />
+              </Form.Item>
+            </>
+          )}
+
+          {!esLogin && tipoEmpresa === "unirse" && (
+            <Form.Item name="id_empresa" label="¿A qué empresa te sumás?" rules={[{ required: true, message: "Elegí tu empresa" }]}>
               <Select
                 showSearch
                 optionFilterProp="label"

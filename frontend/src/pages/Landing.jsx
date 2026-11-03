@@ -15,7 +15,7 @@ const FUNCIONES = [
 ];
 
 const PASOS = [
-  { n: 1, titulo: "Creá tu cuenta", texto: "Elegí tu empresa y entrá al panel.", color: "var(--pink)" },
+  { n: 1, titulo: "Creá tu cuenta", texto: "Creá tu empresa y quedás como su admin.", color: "var(--pink)" },
   { n: 2, titulo: "Armá tu oferta", texto: "Salones, servicios y proveedores.", color: "var(--amber)" },
   { n: 3, titulo: "Publicá la fiesta", texto: "Compartí tu link y aceptá reservas.", color: "var(--cyan)" },
 ];
