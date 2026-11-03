@@ -1,7 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import pool from "../data/db.js";
-import {parseId} from "../utils/validaciones.js";
 import { errorDeUnicidad, insertarAdmin, insertarEmpresa } from "../utils/empresa.js";
 
 const normalizarEmail = (email) => String(email).trim().toLowerCase();
@@ -33,20 +32,9 @@ const datosPublicos = (usuario) => ({
   token_reservas: usuario.token_reservas ?? null
 });
 
-// Empresas entre las que se puede elegir al registrarse (solo el nombre, nada interno).
-export const empresasParaRegistro = async (req, res) => {
-  try {
-    const empresas = await pool.query(`SELECT id_empresa, nombre FROM empresas WHERE activo ORDER BY nombre`);
-    res.json(empresas.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ mensaje: "Error al obtener las empresas" });
-  }
-};
-
-// Quien se registra puede crear su propia empresa (queda como su admin) o sumarse a una que ya existe.
+// Quien se registra crea su propia empresa (con los servicios habituales) y queda como su admin, todo en un paso.
 export const registrar = async (req, res) => {
-  const { nombre, apellido, email, password } = req.body ?? {};
+  const { nombre, apellido, email, password, empresa } = req.body ?? {};
 
   if (!nombre?.trim() || !email?.trim() || !password) {
     return res.status(400).json({ mensaje: "Faltan datos" });
@@ -54,56 +42,6 @@ export const registrar = async (req, res) => {
   if (password.length < 8) {
     return res.status(400).json({ mensaje: "La contraseña debe tener al menos 8 caracteres" });
   }
-  if (req.body.empresa) {
-    return registrarConEmpresa(req, res);
-  }
-  const idEmpresa = parseId(req.body.id_empresa);
-  if (idEmpresa === null) {
-    return res.status(400).json({ mensaje: "Elegí la empresa a la que pertenecés" });
-  }
-
-  const cliente = await pool.connect();
-  try {
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    await cliente.query("BEGIN");
-    const empresa = await cliente.query(`SELECT 1 FROM empresas WHERE id_empresa = $1 AND activo`, [idEmpresa]);
-    if (empresa.rows.length === 0) {
-      await cliente.query("ROLLBACK");
-      return res.status(400).json({ mensaje: "La empresa indicada no existe" });
-    }
-    const usuario = await cliente.query(`
-      INSERT INTO usuario (email, password_hash)
-      VALUES ($1, $2)
-      RETURNING id_usuario, email`, [normalizarEmail(email), passwordHash]);
-    const { id_usuario } = usuario.rows[0];
-    const personal = await cliente.query(`
-      INSERT INTO personal (nombre, apellido, usuario_id, id_empresa)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id_personal`, [nombre.trim(), typeof apellido === "string" && apellido.trim() ? apellido.trim().slice(0, 100) : null, id_usuario, idEmpresa]);
-    await cliente.query("COMMIT");
-
-    res.status(201).json({
-      id: id_usuario,
-      id_personal: personal.rows[0].id_personal,
-      nombre: [nombre.trim(), typeof apellido === "string" ? apellido.trim() : ""].filter(Boolean).join(" "),
-      email: usuario.rows[0].email,
-      id_empresa: idEmpresa
-    });
-  } catch (error) {
-    await cliente.query("ROLLBACK");
-    if (error.code === "23505") {
-      return res.status(409).json({ mensaje: "El email ya está registrado" });
-    }
-    res.status(500).json({ mensaje: "Error al registrar el usuario" });
-  } finally {
-    cliente.release();
-  }
-};
-
-// Crea la empresa (con los servicios habituales) y a quien se registra como su admin, todo en un paso.
-const registrarConEmpresa = async (req, res) => {
-  const { nombre, apellido, email, password, empresa } = req.body;
   const nombreEmpresa = typeof empresa?.nombre === "string" ? empresa.nombre.trim() : "";
   const cuit = typeof empresa?.cuit === "string" ? empresa.cuit.trim() : "";
   if (!nombreEmpresa || !cuit) {
@@ -139,7 +77,7 @@ const registrarConEmpresa = async (req, res) => {
     const duplicado = errorDeUnicidad(error);
     if (duplicado) return res.status(409).json({ mensaje: duplicado });
     console.error(error);
-    res.status(500).json({ mensaje: "Error al crear la empresa" });
+    res.status(500).json({ mensaje: "Error al crear la cuenta" });
   } finally {
     cliente.release();
   }

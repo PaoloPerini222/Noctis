@@ -128,7 +128,7 @@ docker exec -it eventos-db psql -U eventos -d eventos
 Cada empresa (`empresas`) es una organizadora con sus propios datos. `personal`, `cliente`, `evento`, `servicio` y `proveedor` llevan `id_empresa`; todo lo demás (propuestas, tareas, cierres, etc.) pertenece a la empresa de su evento.
 
 - La empresa del usuario sale de `personal.id_empresa` y se lee de la base en cada pedido (no del token). Todas las consultas filtran por ella: un id de otra empresa responde `404`.
-- Al crear la cuenta se elige la empresa (`GET /auth/empresas` lista las activas). Quien se registra queda sin rol hasta que la responsable de **su** empresa se lo asigne.
+- Al crear la cuenta, cada persona crea su propia empresa (nombre y CUIT) y queda como su admin. No se puede elegir ni sumarse a una empresa existente desde el registro: al equipo lo suma el admin.
 - **Una empresa nace con su responsable.** El superadmin crea la empresa con `POST /empresas` incluyendo `responsable: {nombre, email, password}`: en una sola transacción se crean la empresa, la cuenta de acceso y la persona con rol `responsable` (si algo falla no queda nada a medias). Si una empresa se queda sin responsable, `POST /empresas/:id/responsable` suma otro. `GET /empresas` devuelve también quiénes son sus responsables y cuánta gente tiene.
 - **El responsable arma su equipo con cuentas.** `POST /personal` acepta `email` y `password` (se piden juntos): crea a la persona y su usuario para que pueda ingresar, y después se le asignan roles con `PUT /personal/:id/roles`. `PUT /personal/:id` permite cambiar el email o la contraseña. Una persona puede tener varios roles (en un equipo chico alguien cumple varias responsabilidades).
 - **La responsable es la dueña de la empresa y puede todo lo de su empresa.** Además de aprobar propuestas y gestionar el equipo, tiene los permisos del organizador (clientes, proveedores, servicios, eventos, propuestas, tareas y cierres, en cualquier evento de la empresa) y del coordinador (confirmaciones de proveedores y avisos). Se aplica en `verificarToken` (se le suman esos roles) y en `duenoDelEvento` (no se le exige ser el organizador del evento). El organizador y el coordinador siguen limitados a lo suyo.
@@ -196,12 +196,11 @@ router.delete("/:id", verificarToken, verificarRol("responsable"), eliminarEmpre
 
 ## API
 
-Todas las rutas empiezan con `/api`. Salvo `register`, `login` y `auth/empresas`, todas requieren token.
+Todas las rutas empiezan con `/api`. Salvo `register`, `login` y las rutas `publico`, todas requieren token.
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/auth/empresas` | Empresas activas para elegir al registrarse (público) |
-| POST | `/auth/register` | Registra un usuario. Body: `{ nombre, email, password, id_empresa }` (mín. 8 caracteres) |
+| POST | `/auth/register` | Crea la empresa y a quien se registra como su admin. Body: `{ nombre, apellido, email, password, empresa: { nombre, cuit } }` (contraseña mín. 8 caracteres) |
 | POST | `/auth/login` | Devuelve `{ token, usuario }`. Body: `{ email, password }` |
 | GET | `/auth/perfil` | Datos del usuario logueado |
 

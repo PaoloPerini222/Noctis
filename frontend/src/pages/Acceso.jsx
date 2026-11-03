@@ -1,12 +1,12 @@
 import { ArrowLeftOutlined, BankOutlined, IdcardOutlined, LockOutlined, MailOutlined, UserOutlined } from "@ant-design/icons";
-import { Alert, Button, Form, Input, Radio, Segmented, Select } from "antd";
+import { Alert, Button, Form, Input, Segmented } from "antd";
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import BotonTema from "../components/BotonTema.jsx";
 import Logo from "../components/Logo.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { mensajeError } from "../services/api.js";
-import { listarEmpresas, registrar } from "../services/authService.js";
+import { registrar } from "../services/authService.js";
 
 // Login y registro comparten pantalla: modo "login" o "registro" según la ruta.
 // El formulario es de Ant Design (Form): valida los campos antes de llamar a onFinish.
@@ -16,32 +16,22 @@ export default function Acceso({ modo }) {
   const navigate = useNavigate();
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
-  const [empresas, setEmpresas] = useState([]);
-  // Al registrarse: "crear" su propia empresa (queda como admin) o "unirse" a una que ya existe.
-  const [tipoEmpresa, setTipoEmpresa] = useState("crear");
 
   // Al pasar de login a registro (o al revés) se limpia el error anterior.
   useEffect(() => setError(""), [modo]);
 
-  // Para sumarse a una empresa hay que elegirla de la lista.
-  useEffect(() => {
-    if (esLogin || tipoEmpresa !== "unirse") return;
-    listarEmpresas()
-      .then(setEmpresas)
-      .catch((err) => setError(mensajeError(err, "No se pudieron cargar las empresas")));
-  }, [esLogin, tipoEmpresa]);
-
   // Si ya hay sesión no tiene sentido ver esta pantalla.
   if (usuario) return <Navigate to="/eventos" replace />;
 
-  // valores = { nombre?, apellido?, id_empresa? | nombre_empresa? + cuit?, email, password } ya validados por antd.
+  // valores = { nombre?, apellido?, nombre_empresa?, cuit?, email, password } ya validados por antd.
+  // Al registrarse se crea la empresa y quien se registra queda como su admin.
   const enviar = async (valores) => {
     setError("");
     setEnviando(true);
     try {
       if (!esLogin) {
-        const { nombre_empresa, cuit, id_empresa, ...persona } = valores;
-        await registrar(tipoEmpresa === "crear" ? { ...persona, empresa: { nombre: nombre_empresa, cuit } } : { ...persona, id_empresa });
+        const { nombre_empresa, cuit, ...persona } = valores;
+        await registrar({ ...persona, empresa: { nombre: nombre_empresa, cuit } });
       }
       await ingresar(valores.email, valores.password);
       navigate("/eventos");
@@ -68,7 +58,7 @@ export default function Acceso({ modo }) {
         {esLogin ? (
           <h2 key="l">Volvé<br /><span style={{ color: "var(--pink)" }}>a la pista.</span></h2>
         ) : (
-          <h2 key="r">Sumate<br /><span style={{ color: "var(--lime)" }}>al equipo.</span></h2>
+          <h2 key="r">Creá<br /><span style={{ color: "var(--lime)" }}>tu empresa.</span></h2>
         )}
       </div>
 
@@ -103,21 +93,6 @@ export default function Acceso({ modo }) {
           )}
 
           {!esLogin && (
-            <Form.Item label="Empresa">
-              <Radio.Group
-                optionType="button"
-                buttonStyle="solid"
-                value={tipoEmpresa}
-                onChange={(e) => setTipoEmpresa(e.target.value)}
-                options={[
-                  { label: "Crear mi empresa", value: "crear" },
-                  { label: "Sumarme a una", value: "unirse" },
-                ]}
-              />
-            </Form.Item>
-          )}
-
-          {!esLogin && tipoEmpresa === "crear" && (
             <>
               <Form.Item name="nombre_empresa" label="Nombre de la empresa" rules={[{ required: true, message: "Ingresá el nombre de tu empresa" }, { max: 150, message: "Máximo 150 caracteres" }]}>
                 <Input prefix={<BankOutlined />} placeholder="Como la van a ver tus clientes" autoComplete="organization" />
@@ -126,18 +101,6 @@ export default function Acceso({ modo }) {
                 <Input prefix={<IdcardOutlined />} placeholder="30-12345678-9" />
               </Form.Item>
             </>
-          )}
-
-          {!esLogin && tipoEmpresa === "unirse" && (
-            <Form.Item name="id_empresa" label="¿A qué empresa te sumás?" rules={[{ required: true, message: "Elegí tu empresa" }]}>
-              <Select
-                showSearch
-                optionFilterProp="label"
-                suffixIcon={<BankOutlined />}
-                placeholder="Elegí tu empresa"
-                options={empresas.map((e) => ({ value: e.id_empresa, label: e.nombre }))}
-              />
-            </Form.Item>
           )}
 
           <Form.Item
