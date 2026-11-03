@@ -15,17 +15,40 @@ Sistema para gestionar los eventos de una organizadora: clientes, eventos, propu
 │   ├── middleware/           verificarToken y verificarRol
 │   ├── controllers/          Lógica de cada recurso
 │   └── routes/               Rutas de cada recurso
-├── front/                    Front (React + Vite; en Docker lo sirve nginx)
+├── frontend/                 Front (React + Vite; en Docker lo sirve nginx)
 ├── database/                 Scripts SQL (se ejecutan en orden al crear la base)
 │   ├── 00_schema.sql         Esquema definitivo: tablas, restricciones, funciones y triggers
 │   ├── 01_datos_iniciales.sql  Catálogos necesarios (roles)
 │   ├── 02_datos_prueba.sql   Datos de prueba para desarrollo
 │   └── migraciones/          Migraciones históricas (Docker no las ejecuta)
 ├── docker-compose.yml        Levanta db + back + front
+├── docker-compose.db.yml     Solo la base, para desarrollo (localhost:5433)
 └── rebuild.sh                Reconstruye y levanta todo con los últimos cambios
 ```
 
 ## Puesta en marcha
+
+### Inicio rápido (recién clonado)
+
+Requisitos: Docker Desktop prendido y Node.js 20.19 o más nuevo.
+
+```bash
+cp .env.docker.example .env.docker                 # ya trae los valores para la base de Docker
+docker compose -f docker-compose.db.yml up -d      # base en localhost:5433 con esquema y datos de prueba
+npm install && npm run dev:docker                  # back en http://localhost:3001
+cd frontend && npm install && npm run dev:docker   # front en http://localhost:5180
+```
+
+Entrar en http://localhost:5180 con alguno de los usuarios de prueba:
+
+| Usuario | Contraseña | Qué ve |
+|---|---|---|
+| `admin@gmail.com` | `admin321` | Admin de la empresa "Eventos del Centro" |
+| `superadmin@gmail.com` | `superadmin321` | Dueño del sistema (solo Empresas) |
+
+El front toma de `.env.docker` el puerto del back (`PORT`) y el suyo (`FRONTEND_URL`). Si alguno ya está ocupado en tu máquina, cambialo ahí y reiniciá los dos. Para borrar la base y empezar de cero: `docker compose -f docker-compose.db.yml down -v`.
+
+Las secciones siguientes son otras formas de levantarlo (todo en Docker, o con la base de `docker-compose.yml`).
 
 ### 1. Variables de entorno
 
@@ -63,7 +86,7 @@ docker compose up -d --build     # o ./rebuild.sh
 ```bash
 docker compose up -d db          # solo la base
 npm install && npm run dev       # back en http://localhost:3000 (se reinicia al guardar)
-cd front && npm install && npm run dev   # front en http://localhost:5173
+cd frontend && npm install && npm run dev   # front en http://localhost:5173
 ```
 
 En desarrollo Vite redirige `/api` al back, así que no hace falta configurar CORS aparte.
