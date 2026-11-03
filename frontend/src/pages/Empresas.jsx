@@ -2,26 +2,26 @@ import Estado from "../components/Estado.jsx";
 import PaginaCrud from "../components/PaginaCrud.jsx";
 import { empresasApi } from "../api/empresas.js";
 
-// Empresas de la plataforma (solo el superadmin). Cada empresa nace con su responsable: la primera persona de la
-// empresa, que después suma al resto del equipo y asigna los roles. Sin responsable nadie podría administrarla.
+// Empresas de la plataforma (solo el superadmin). Cada empresa nace con su primer admin, que después suma
+// al resto del equipo y asigna los roles. Sin admin nadie podría administrarla.
 const config = {
   titulo: "Empresas",
   singular: "empresa",
   femenino: true,
   api: empresasApi,
   id: "id_empresa",
-  buscar: (e) => `${e.nombre} ${e.cuit} ${e.email ?? ""} ${e.responsables.map((r) => `${r.nombre} ${r.email ?? ""}`).join(" ")}`,
+  buscar: (e) => `${e.nombre} ${e.cuit} ${e.email ?? ""} ${e.admins.map((r) => `${r.nombre} ${r.email ?? ""}`).join(" ")}`,
   puedeCrear: (p) => p.esSuperadmin,
   puedeEditar: (p) => p.esSuperadmin,
   columnas: [
     { titulo: "Empresa", render: (e) => e.nombre },
     { titulo: "CUIT", render: (e) => e.cuit },
     {
-      titulo: "Responsable",
+      titulo: "Admins",
       render: (e) =>
-        e.responsables.length
-          ? e.responsables.map((r) => r.nombre).join(", ")
-          : <Estado estado="Sin responsable" color="var(--red)" />,
+        e.admins.length
+          ? e.admins.map((r) => r.nombre).join(", ")
+          : <Estado estado="Sin admin" color="var(--red)" />,
     },
     { titulo: "Personal", render: (e) => e.personal },
     { titulo: "Email", render: (e) => e.email ?? "—" },
@@ -38,27 +38,27 @@ const config = {
       options: [{ value: true, label: "Activa" }, { value: false, label: "Desactivada" }],
       ayuda: "Una empresa desactivada no puede ingresar ni aparece al crear una cuenta.",
     },
-    // El responsable es obligatorio al crear la empresa; al editar sirve para sumar otro.
-    { name: "responsable_nombre", label: "Responsable: nombre", ayuda: "La dueña o el dueño de la empresa. Al crear la empresa es obligatorio; al editarla, completalo para sumar otro responsable." },
-    { name: "responsable_apellido", label: "Responsable: apellido" },
-    { name: "responsable_email", label: "Responsable: email de acceso", type: "email" },
-    { name: "responsable_password", label: "Responsable: contraseña", type: "password", minimo: 8, ayuda: "Mínimo 8 caracteres." },
+    // El admin es obligatorio al crear la empresa; al editar sirve para sumar otro.
+    { name: "admin_nombre", label: "Admin: nombre", ayuda: "Quien administra la empresa. Al crear la empresa es obligatorio; al editarla, completalo para sumar otro admin." },
+    { name: "admin_apellido", label: "Admin: apellido" },
+    { name: "admin_email", label: "Admin: email de acceso", type: "email" },
+    { name: "admin_password", label: "Admin: contraseña", type: "password", minimo: 8, ayuda: "Mínimo 8 caracteres." },
   ],
-  guardar: async (item, { responsable_nombre, responsable_apellido, responsable_email, responsable_password, ...datos }) => {
-    const hayResponsable = Boolean(responsable_nombre || responsable_email || responsable_password);
-    const completo = Boolean(responsable_nombre && responsable_email && responsable_password);
-    if (hayResponsable && !completo) {
-      throw new Error("Para el responsable completá el nombre, el email y la contraseña.");
+  guardar: async (item, { admin_nombre, admin_apellido, admin_email, admin_password, ...datos }) => {
+    const hayAdmin = Boolean(admin_nombre || admin_email || admin_password);
+    const completo = Boolean(admin_nombre && admin_email && admin_password);
+    if (hayAdmin && !completo) {
+      throw new Error("Para el admin completá el nombre, el email y la contraseña.");
     }
-    const responsable = { nombre: responsable_nombre, apellido: responsable_apellido, email: responsable_email, password: responsable_password };
+    const admin = { nombre: admin_nombre, apellido: admin_apellido, email: admin_email, password: admin_password };
 
     if (!item) {
-      if (!completo) throw new Error("Una empresa necesita su responsable: completá nombre, email y contraseña.");
-      await empresasApi.crear({ ...datos, responsable });
+      if (!completo) throw new Error("Una empresa necesita su admin: completá nombre, email y contraseña.");
+      await empresasApi.crear({ ...datos, admin });
       return;
     }
     await empresasApi.editar(item.id_empresa, datos);
-    if (completo) await empresasApi.agregarResponsable(item.id_empresa, responsable);
+    if (completo) await empresasApi.agregarAdmin(item.id_empresa, admin);
   },
 };
 

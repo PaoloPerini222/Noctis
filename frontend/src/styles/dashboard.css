@@ -400,3 +400,140 @@
   flex-direction: column;
   gap: 2px;
 }
+
+/* Tarjeta con el link público de reservas (arriba de la pantalla de Eventos). */
+.link-reservas .ant-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.link-reservas p {
+  margin: 6px 0 8px;
+  color: var(--soft);
+}
+
+.link-reservas code {
+  font-size: 13px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* Calendario del mes en Eventos: los días con un evento van en rojo (en los dos temas, no con el color principal). */
+:root {
+  --dia-evento: #d6303f;
+}
+
+:root[data-theme="light"] {
+  --dia-evento: #c0392b;
+}
+
+.calendario {
+  max-width: 440px;
+}
+
+.calendario .ant-card-body {
+  padding: 16px 18px 18px;
+}
+
+.calendario-cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.calendario-cabecera h2 {
+  font: 700 16px var(--display);
+  letter-spacing: .04em;
+  text-transform: capitalize;
+}
+
+.calendario-grilla {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendario-grilla > span {
+  display: flex;
+}
+
+.calendario-dia-semana {
+  justify-content: center;
+  padding-bottom: 4px;
+  font: 600 10px var(--mono);
+  letter-spacing: .12em;
+  color: var(--muted);
+}
+
+.calendario-dia {
+  width: 100%;
+  min-height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font: 600 13px var(--sans);
+  color: var(--soft);
+  background: transparent;
+}
+
+.calendario-dia.pasado {
+  color: var(--faint);
+}
+
+.calendario-dia.hoy {
+  border-color: var(--line-strong);
+}
+
+.calendario-dia.con-evento {
+  background: var(--dia-evento);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--dia-evento) 40%, transparent);
+  transition: transform .15s, filter .15s;
+}
+
+.calendario-dia.con-evento:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.12);
+}
+
+.calendario-dia.con-evento:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.calendario-dia.con-evento.pasado {
+  opacity: .6;
+}
+
+@media (max-width: 720px) {
+  .calendario .ant-card-body {
+    padding: 14px;
+  }
+
+  .calendario-grilla {
+    gap: 3px;
+  }
+
+  .calendario-dia {
+    min-height: 30px;
+    font-size: 12px;
+  }
+}
+
+/* Configuración del negocio. */
+.configuracion {
+  max-width: 760px;
+}
+
+.configuracion-pie {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}

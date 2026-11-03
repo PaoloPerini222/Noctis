@@ -155,7 +155,7 @@ export const eliminarProveedor = async (req, res) => {
         console.error(error);
 
         if(error.code === "23503"){
-            return res.status(409).json({mensaje: "no se puede eliminar, el proveedor esta en propuestas o avisos"});
+            return res.status(409).json({mensaje: "no se puede eliminar, el proveedor tiene registros asociados"});
         }
 
         res.status(500).json({mensaje: "no se pudo eliminar el proveedor"});

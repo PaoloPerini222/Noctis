@@ -16,14 +16,14 @@ const FUNCIONES = [
 
 const PASOS = [
   { n: 1, titulo: "Registrá tu equipo", texto: "Empresas, clientes y personal.", color: "var(--pink)" },
-  { n: 2, titulo: "Sumá a tu equipo", texto: "Un rol para cada persona.", color: "var(--amber)" },
-  { n: 3, titulo: "Publicá la fiesta", texto: "Creá, aprobá, salí a la pista.", color: "var(--cyan)" },
+  { n: 2, titulo: "Sumá a tu equipo", texto: "Admins con acceso al panel.", color: "var(--amber)" },
+  { n: 3, titulo: "Publicá la fiesta", texto: "Compartí tu link y aceptá reservas.", color: "var(--cyan)" },
 ];
 
 const FAQ = [
   {
-    pregunta: "¿Qué diferencia hay entre los roles?",
-    respuesta: "El responsable administra, el coordinador aprueba y el organizador crea sus eventos.",
+    pregunta: "¿Quién usa el panel?",
+    respuesta: "El admin de tu empresa gestiona las reservas, los eventos, los servicios y el equipo. Tus clientes reservan solos desde tu link público.",
   },
   {
     pregunta: "¿Puedo manejar varias salas?",
@@ -35,7 +35,7 @@ const FAQ = [
   },
   {
     pregunta: "¿Cuánto cuesta?",
-    respuesta: "Crear tu cuenta es gratis. Podés registrarte y empezar a cargar tus eventos, clientes y propuestas sin costo.",
+    respuesta: "Crear tu cuenta es gratis. Podés registrarte y empezar a cargar tus servicios y recibir reservas sin costo.",
   },
 ];
 
@@ -97,9 +97,9 @@ export default function Landing() {
         <div className="land-sub">
           <p className="reveal d1">El gestor de fiestas para boliches.</p>
           <ul className="reveal d2">
-            <li>RESPONSABLES</li>
-            <li>COORDINADORES</li>
-            <li>ORGANIZADORES</li>
+            <li>RESERVAS</li>
+            <li>SERVICIOS</li>
+            <li>ADMINS</li>
           </ul>
           <div className="end reveal d3">
             <Button type="primary" size="large" shape="round" onClick={() => navigate("/registro")}>

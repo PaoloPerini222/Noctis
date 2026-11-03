@@ -7,6 +7,7 @@ const CLAVES = {
     personal: "id_personal",
     servicio: "id_servicio",
     proveedor: "id_proveedor",
+    sucursal: "id_sucursal",
 };
 
 // true si el registro existe y es de la empresa. Un id de otra empresa se trata como inexistente.

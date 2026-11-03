@@ -47,7 +47,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Al abrir la app se actualizan los roles: la responsable pudo haberlos cambiado.
+  // Al abrir la app se actualizan los roles: otro organizador pudo haberlos cambiado.
   useEffect(() => {
     refrescar();
   }, [refrescar]);

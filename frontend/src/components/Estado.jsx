@@ -4,7 +4,7 @@ import { etiqueta } from "../utils/formato.js";
 // Disponibilidad de la sede -> color (pendiente de consulta, confirmada o no disponible).
 export const COLORES_SEDE = { pendiente: "var(--amber)", confirmada: "var(--lime)", no_disponible: "var(--red)" };
 
-// Etiqueta de estado con color (evento, propuesta, tarea). "color" es una variable CSS como "var(--lime)":
+// Etiqueta de estado con color (evento, rol, empresa). "color" es una variable CSS como "var(--lime)":
 // el fondo es ese color muy suave y el texto el color pleno, así funciona igual en los dos temas.
 export default function Estado({ estado, color = "var(--muted)", className }) {
   return (

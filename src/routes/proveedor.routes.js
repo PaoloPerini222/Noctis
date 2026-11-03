@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verificarToken } from "../middleware/auth.middleware.js";
-import { conRol, soloRoles, ORGANIZADOR } from "../middleware/permisos.js";
+import { conRol, soloRoles, ADMIN } from "../middleware/permisos.js";
 import {
     obtenerProveedores,
     obtenerProveedor,
@@ -16,9 +16,9 @@ router.use(verificarToken, conRol);
 
 router.get("/", obtenerProveedores);
 router.get("/:id", obtenerProveedor);
-router.post("/", soloRoles(ORGANIZADOR), crearProveedor);
-router.put("/:id", soloRoles(ORGANIZADOR), editarProveedor);
-router.put("/:id/servicios", soloRoles(ORGANIZADOR), asignarServicios);
-router.delete("/:id", soloRoles(ORGANIZADOR), eliminarProveedor);
+router.post("/", soloRoles(ADMIN), crearProveedor);
+router.put("/:id", soloRoles(ADMIN), editarProveedor);
+router.put("/:id/servicios", soloRoles(ADMIN), asignarServicios);
+router.delete("/:id", soloRoles(ADMIN), eliminarProveedor);
 
 export default router;

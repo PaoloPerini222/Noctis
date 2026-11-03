@@ -2,10 +2,9 @@ import {
   AppstoreOutlined,
   BankOutlined,
   CalendarOutlined,
-  CheckSquareOutlined,
-  FileTextOutlined,
-  IdcardOutlined,
+  EnvironmentOutlined,
   LogoutOutlined,
+  SettingOutlined,
   ShopOutlined,
   TeamOutlined,
 } from "@ant-design/icons";
@@ -21,16 +20,15 @@ import SinRol from "./SinRol.jsx";
 // Secciones del panel: alimentan el menú lateral (escritorio) y la barra inferior (móvil).
 export const SECCIONES = [
   { to: "/eventos", label: "Eventos", icono: <CalendarOutlined /> },
-  { to: "/propuestas", label: "Propuestas", icono: <FileTextOutlined /> },
-  { to: "/tareas", label: "Tareas", icono: <CheckSquareOutlined /> },
   { to: "/clientes", label: "Clientes", icono: <TeamOutlined /> },
   { to: "/proveedores", label: "Proveedores", icono: <ShopOutlined /> },
   { to: "/servicios", label: "Servicios", icono: <AppstoreOutlined /> },
-  { to: "/equipo", label: "Equipo", icono: <IdcardOutlined /> },
+  { to: "/sucursales", label: "Sucursales", icono: <EnvironmentOutlined /> },
+  { to: "/configuracion", label: "Configuración", icono: <SettingOutlined /> },
   { to: "/empresas", label: "Empresas", icono: <BankOutlined /> },
 ];
 
-// Una persona puede tener varios roles: se muestran todos ("Organizador · Coordinador").
+// Se muestran los roles de la persona ("Organizador").
 export const rolDe = (usuario) =>
   usuario?.roles?.length ? usuario.roles.map((r) => r.charAt(0).toUpperCase() + r.slice(1)).join(" · ") : "Sin rol";
 
@@ -105,7 +103,7 @@ export default function Layout() {
         </Dropdown>
       </div>
 
-      {/* Sin rol asignado no hay nada que mostrar: se pide la autorización de la responsable. */}
+      {/* Sin rol asignado no hay nada que mostrar: se pide la autorización de un admin. */}
       {usuario?.roles?.length ? <Outlet /> : <SinRol onSalir={cerrarSesion} />}
 
       {/* Barra inferior que solo se ve en teléfono. NavLink marca con "on" la sección activa. */}

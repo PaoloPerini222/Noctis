@@ -3,7 +3,7 @@ import { Button, Result } from "antd";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 
-// Pantalla para quien se registró pero todavía no tiene rol: el alta del personal la autoriza la responsable.
+// Pantalla para quien se registró pero todavía no tiene rol: el alta la hacen los dueños del sistema (superadmin).
 export default function SinRol({ onSalir }) {
   const { refrescar } = useAuth();
   const [revisando, setRevisando] = useState(false);
@@ -19,7 +19,7 @@ export default function SinRol({ onSalir }) {
       <Result
         status="info"
         title="Tu cuenta espera autorización"
-        subTitle="La responsable de la organizadora tiene que asignarte un rol (organizador, coordinador o responsable) para que puedas ver y cargar información."
+        subTitle="Los dueños del sistema tienen que darte el rol de admin para que puedas ver y cargar información."
         extra={[
           <Button key="revisar" type="primary" icon={<ReloadOutlined />} loading={revisando} onClick={revisar}>
             Ya me autorizaron

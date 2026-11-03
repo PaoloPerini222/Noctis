@@ -2,24 +2,12 @@ import api from "../services/api.js";
 import { crearApi } from "./client.js";
 
 // Cliente HTTP del recurso /evento (singular, así lo expone el back).
+// El estado del evento (aceptar o rechazar la reserva, realizado, cancelado) se cambia con editar(id, { estado }).
 export const eventosApi = crearApi("/evento");
 
-// Lo que cuelga de un evento:
-//   exclusiones -> servicios que el cliente descartó (/evento/:id/exclusiones)
-//   cambios     -> cambios relevantes y la revisión de sus compromisos (/evento/:id/cambios)
-//   cierre      -> realizado o cancelado, con los avisos a proveedores (/evento/:id/cierre)
-//   reapertura  -> rechazos anteriores de la solicitud y reabrirla si el cliente la retoma (/evento/:id/reapertura)
-export const exclusionesApi = (idEvento) => crearApi(`/evento/${idEvento}/exclusiones`);
-
+// Cambios relevantes del evento y la revisión de sus compromisos (/evento/:id/cambios).
 export const cambiosApi = (idEvento) => crearApi(`/evento/${idEvento}/cambios`);
 
-export const cierreApi = (idEvento) => ({
-  obtener: () => api.get(`/evento/${idEvento}/cierre`).then((res) => res.data),
-  cerrar: (datos) => api.post(`/evento/${idEvento}/cierre`, datos).then((res) => res.data),
-  registrarAviso: (idAviso, datos) => api.put(`/evento/${idEvento}/cierre/avisos/${idAviso}`, datos).then((res) => res.data),
-});
-
-export const reaperturaApi = (idEvento) => ({
-  rechazos: () => api.get(`/evento/${idEvento}/reapertura`).then((res) => res.data),
-  reabrir: () => api.post(`/evento/${idEvento}/reapertura`).then((res) => res.data),
-});
+// Consulta y respuesta de un proveedor para una reserva: estado = "avisado" | "disponible" | "no_disponible".
+export const responderProveedor = (idEvento, idProveedor, estado) =>
+  api.put(`/evento/${idEvento}/proveedores/${idProveedor}`, { estado }).then((res) => res.data);

@@ -161,3 +161,123 @@
     justify-content: flex-start;
   }
 }
+
+/* Pie de la ventana de Detalles de una reserva: enlaces a la izquierda, acciones del estado a la derecha. */
+.detalle-reserva-pie {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.detalle-reserva-pie .ant-btn + .ant-btn {
+  margin-inline-start: 0;
+}
+
+/* Eventos de un día del calendario, con su salón. */
+.eventos-dia {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eventos-dia-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.eventos-dia-item > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.eventos-dia-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Botón para avisarle a un proveedor por WhatsApp. */
+.boton-whatsapp.ant-btn:not(:disabled) {
+  color: #25d366;
+  border-color: color-mix(in srgb, #25d366 55%, transparent);
+}
+
+.boton-whatsapp.ant-btn:not(:disabled):hover {
+  color: #fff !important;
+  background: #25d366 !important;
+  border-color: #25d366 !important;
+}
+
+/* Avisar a todos los proveedores de una reserva. */
+.servicios-reserva-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 12px 0 8px;
+}
+
+.servicios-reserva-bar:empty {
+  display: none;
+}
+
+.avisar-todos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.avisar-todos-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.avisar-todos-item > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.avisar-todos-item.enviado {
+  opacity: .65;
+}
+
+.avisar-todos-ok {
+  color: #25d366;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.avisar-todos-pie {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Proveedores de un servicio con su respuesta a la consulta. */
+.proveedores-servicio {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fila-proveedor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}

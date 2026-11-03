@@ -34,14 +34,14 @@ export default function PanelCambios({ evento }) {
     { name: "situacion_compromisos", label: "Situación de los compromisos (si ya la revisaste)", type: "textarea" },
   ];
   const camposRevision = [
-    { name: "situacion_compromisos", label: "Situación real de proveedores, tareas y condiciones", type: "textarea", required: true },
+    { name: "situacion_compromisos", label: "Situación real de proveedores y condiciones", type: "textarea", required: true },
   ];
 
   return (
     <div className="panel-evento">
       <div className="panel-bar">
         <span className="muted">
-          Un cambio de fecha, sede o asistentes obliga a revisar proveedores, tareas y condiciones. Con el encargo confirmado, el cambio de fecha o de sede y la pérdida de confirmación de un proveedor se anotan solos: falta registrar su revisión.
+          Un cambio de fecha, sede o asistentes obliga a revisar proveedores y condiciones. Los cambios de estado y, con el evento confirmado, los de fecha o sede se anotan solos.
         </span>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditando("nuevo")}>
           Registrar cambio

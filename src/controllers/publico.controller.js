@@ -1,145 +1,266 @@
 import pool from "../data/db.js";
+import {listaDeIds, parseId, textoObligatorio, textoOpcional, ID_MAXIMO, REGEX_EMAIL} from "../utils/validaciones.js";
+import {ESTADOS_QUE_OCUPAN, bloquearAgenda, validarFechaLibre, esFechaRepetida, respuestaFechaRepetida, guardarServiciosDelEvento, serviciosDelEvento, totalDe} from "../utils/reservas.js";
 
 const REGEX_TOKEN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-// La propuesta solo se muestra al cliente una vez enviada; antes es trabajo interno.
-const ESTADOS_VISIBLES = ["enviada", "en_negociacion", "aceptada", "rechazada"];
-const ESTADOS_QUE_ADMITEN_RESPUESTA = ["enviada", "en_negociacion"];
-const MOTIVO_MAXIMO = 500;
+const REGEX_FECHA = /^\d{4}-\d{2}-\d{2}$/;
+const ENLACE_INVALIDO = {mensaje: "este enlace no es valido"};
 
 const sinCache = (res) => {
     res.set("Cache-Control", "no-store");
     res.set("X-Robots-Tag", "noindex, nofollow");
 };
 
-// Todo lo que sale de acá lo ve quien tenga el link: solo datos del propio evento, sin proveedores ni datos internos.
-const buscarEvento = async (cliente, token, {bloquear}) => {
-    const evento = await cliente.query(
-        `select e.id_evento, e.tipo_evento, e.fecha::text as fecha, e.sede_prevista, e.cant_asistentes_estimada,
-                e.necesidades_preferencias, e.estado, c.nombre_completo as cliente_nombre, p.nombre_completo as organizador_nombre
-         from evento e
-         left join cliente c on c.id_cliente = e.id_cliente
-         left join personal p on p.id_personal = e.id_organizador
-         where e.token_publico = $1${bloquear ? " for update of e" : ""}`,
+const esFechaValida = (valor) => {
+    if(typeof valor !== "string" || !REGEX_FECHA.test(valor)){
+        return false;
+    }
+
+    const fecha = new Date(`${valor}T00:00:00Z`);
+    return !Number.isNaN(fecha.getTime()) && fecha.toISOString().startsWith(valor);
+};
+
+// Empresa activa dueña del link de reservas, o undefined.
+const buscarEmpresa = async (db, token) => {
+    const empresa = await db.query(
+        `select id_empresa, nombre, email, telefono, direccion from empresas where token_reservas = $1 and activo`,
         [token]
     );
 
-    return evento.rows[0];
+    return empresa.rows[0];
 };
 
-const buscarPropuesta = async (cliente, idEvento, {bloquear}) => {
-    const propuesta = await cliente.query(
-        `select id_propuesta, fecha_emision::text as fecha_emision, total, estado,
-                fecha_respuesta::text as fecha_respuesta, condiciones_comerciales, condiciones_acordadas, motivo_rechazo
-         from propuesta
-         where id_evento = $1${bloquear ? " for update" : ""}`,
-        [idEvento]
+// ---------- Link de reservas de la empresa: /reservar/<token> ----------
+
+// Lo que ve cualquiera con el link: los salones, los servicios (con equipamiento y precio) y las fechas que ya no
+// se pueden tomar en cada salón (fechas_ocupadas: [{fecha, id_sucursal}]; id_sucursal null = evento sin salón).
+export const obtenerReservas = async (req, res) => {
+    sinCache(res);
+
+    try{
+        const {token} = req.params;
+        if(!REGEX_TOKEN.test(token)){
+            return res.status(404).json(ENLACE_INVALIDO);
+        }
+
+        const empresa = await buscarEmpresa(pool, token);
+        if(!empresa){
+            return res.status(404).json(ENLACE_INVALIDO);
+        }
+
+        const servicios = await pool.query(
+            `select id_servicio, nombre, descripcion, equipamiento, precio::float8 as precio
+             from servicio where id_empresa = $1 order by nombre`,
+            [empresa.id_empresa]
+        );
+        const sucursales = await pool.query(
+            `select id_sucursal, nombre, direccion from sucursal where id_empresa = $1 order by nombre`,
+            [empresa.id_empresa]
+        );
+        const ocupadas = await pool.query(
+            `select distinct fecha::text as fecha, id_sucursal from evento
+             where id_empresa = $1 and fecha >= current_date and estado = any($2)
+             order by 1`,
+            [empresa.id_empresa, ESTADOS_QUE_OCUPAN]
+        );
+
+        const {id_empresa, ...datosEmpresa} = empresa;
+        res.json({
+            empresa: datosEmpresa,
+            sucursales: sucursales.rows,
+            servicios: servicios.rows,
+            fechas_ocupadas: ocupadas.rows,
+        });
+
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({mensaje: "no se pudieron obtener los servicios"});
+    }
+};
+
+const validarReserva = (body) => {
+    const nombre = textoObligatorio(body?.nombre, "tu nombre", 100);
+    const apellido = textoOpcional(body?.apellido, "tu apellido", 100);
+    const telefono = textoObligatorio(body?.telefono, "tu telefono", 30);
+    const email = textoOpcional(body?.email, "tu email", 100);
+    const tipo = textoObligatorio(body?.tipo_evento, "el tipo de evento", 50);
+    const sede = textoOpcional(body?.sede_prevista, "el lugar", 100);
+    const necesidades = textoOpcional(body?.necesidades_preferencias, "los comentarios", 500);
+    const error = nombre.error ?? apellido.error ?? telefono.error ?? email.error ?? tipo.error ?? sede.error ?? necesidades.error;
+    if(error){
+        return {error};
+    }
+    if(email.valor && !REGEX_EMAIL.test(email.valor)){
+        return {error: "tu email no es valido"};
+    }
+
+    if(!esFechaValida(body?.fecha)){
+        return {error: "elegí una fecha valida"};
+    }
+
+    const asistentes = body?.cant_asistentes_estimada;
+    if(asistentes !== undefined && asistentes !== null && (!Number.isInteger(asistentes) || asistentes < 1 || asistentes > ID_MAXIMO)){
+        return {error: "la cantidad de invitados no es valida"};
+    }
+
+    const servicios = listaDeIds(body?.servicios ?? [], "servicios");
+    if(servicios.error){
+        return {error: servicios.error};
+    }
+    if(servicios.ids.length === 0){
+        return {error: "elegí al menos un servicio"};
+    }
+
+    let idSucursal = null;
+    if(body?.id_sucursal !== undefined && body?.id_sucursal !== null){
+        idSucursal = parseId(body.id_sucursal);
+        if(idSucursal === null){
+            return {error: "el salón elegido no es valido"};
+        }
+    }
+
+    return {
+        datos: {
+            nombre: nombre.valor, apellido: apellido.valor, telefono: telefono.valor, email: email.valor?.toLowerCase() ?? null,
+            tipo_evento: tipo.valor, fecha: body.fecha, sede_prevista: sede.valor, cant_asistentes_estimada: asistentes ?? null,
+            necesidades_preferencias: necesidades.valor, servicios: servicios.ids, id_sucursal: idSucursal,
+        },
+    };
+};
+
+// Si el cliente ya reservó antes (mismo email, o mismo teléfono si no dejó email) se reutiliza; si no, se crea.
+const clienteDeLaReserva = async (db, idEmpresa, datos) => {
+    const existente = datos.email
+        ? await db.query(`select id_cliente from cliente where id_empresa = $1 and lower(email) = $2 order by id_cliente limit 1`, [idEmpresa, datos.email])
+        : await db.query(`select id_cliente from cliente where id_empresa = $1 and trim(telefono) = $2 order by id_cliente limit 1`, [idEmpresa, datos.telefono]);
+    if(existente.rows.length > 0){
+        return existente.rows[0].id_cliente;
+    }
+
+    const nuevo = await db.query(
+        `insert into cliente (nombre, apellido, telefono, email, id_empresa) values ($1, $2, $3, $4, $5) returning id_cliente`,
+        [datos.nombre, datos.apellido, datos.telefono, datos.email, idEmpresa]
     );
 
-    return propuesta.rows[0];
+    return nuevo.rows[0].id_cliente;
 };
 
+// El cliente reserva: queda cargado en Clientes y el evento entra como propuesta, con la fecha y los servicios que eligió.
+export const crearReserva = async (req, res) => {
+    sinCache(res);
+
+    const {token} = req.params;
+    if(!REGEX_TOKEN.test(token)){
+        return res.status(404).json(ENLACE_INVALIDO);
+    }
+
+    const {error, datos} = validarReserva(req.body);
+    if(error){
+        return res.status(400).json({mensaje: error});
+    }
+
+    const conexion = await pool.connect();
+    try{
+        await conexion.query("BEGIN");
+
+        const empresa = await buscarEmpresa(conexion, token);
+        if(!empresa){
+            await conexion.query("ROLLBACK");
+            return res.status(404).json(ENLACE_INVALIDO);
+        }
+
+        const pasada = await conexion.query(`select $1::date < current_date as pasada`, [datos.fecha]);
+        if(pasada.rows[0].pasada){
+            await conexion.query("ROLLBACK");
+            return res.status(400).json({mensaje: "esa fecha ya pasó, elegí otra"});
+        }
+
+        // Si la empresa tiene salones, el cliente tiene que elegir uno de los suyos.
+        const salones = await conexion.query(`select id_sucursal from sucursal where id_empresa = $1`, [empresa.id_empresa]);
+        if(salones.rows.length > 0 && datos.id_sucursal === null){
+            await conexion.query("ROLLBACK");
+            return res.status(400).json({mensaje: "elegí el salón"});
+        }
+        if(datos.id_sucursal !== null && !salones.rows.some((s) => s.id_sucursal === datos.id_sucursal)){
+            await conexion.query("ROLLBACK");
+            return res.status(400).json({mensaje: "el salón elegido no existe"});
+        }
+
+        await bloquearAgenda(conexion, empresa.id_empresa);
+        const fechaOcupada = await validarFechaLibre(conexion, empresa.id_empresa, datos.fecha, datos.id_sucursal);
+        if(fechaOcupada){
+            await conexion.query("ROLLBACK");
+            return res.status(409).json({mensaje: fechaOcupada});
+        }
+
+        const idCliente = await clienteDeLaReserva(conexion, empresa.id_empresa, datos);
+        const evento = await conexion.query(
+            `insert into evento (id_cliente, tipo_evento, fecha, sede_prevista, cant_asistentes_estimada, necesidades_preferencias, estado, id_empresa, id_sucursal)
+             values ($1, $2, $3, $4, $5, $6, 'propuesta', $7, $8) returning id_evento, token_publico`,
+            [idCliente, datos.tipo_evento, datos.fecha, datos.sede_prevista, datos.cant_asistentes_estimada, datos.necesidades_preferencias, empresa.id_empresa, datos.id_sucursal]
+        );
+
+        const errorServicios = await guardarServiciosDelEvento(conexion, evento.rows[0].id_evento, empresa.id_empresa, datos.servicios);
+        if(errorServicios){
+            await conexion.query("ROLLBACK");
+            return res.status(400).json({mensaje: errorServicios});
+        }
+
+        await conexion.query("COMMIT");
+        res.status(201).json({mensaje: "reserva recibida", token: evento.rows[0].token_publico});
+
+    } catch (error) {
+        await conexion.query("ROLLBACK");
+        console.error(error);
+
+        if(esFechaRepetida(error)){
+            return res.status(409).json(respuestaFechaRepetida);
+        }
+
+        res.status(500).json({mensaje: "no se pudo registrar la reserva"});
+    } finally {
+        conexion.release();
+    }
+};
+
+// ---------- Seguimiento de una reserva: /evento/<token> ----------
+
+// Lo ve quien tenga el link de su reserva: solo datos del propio evento, sin datos internos.
 export const obtenerEventoPublico = async (req, res) => {
     sinCache(res);
 
     try{
         const {token} = req.params;
         if(!REGEX_TOKEN.test(token)){
-            return res.status(404).json({mensaje: "este enlace no es valido"});
+            return res.status(404).json(ENLACE_INVALIDO);
         }
 
-        const evento = await buscarEvento(pool, token, {bloquear: false});
-        if(!evento){
-            return res.status(404).json({mensaje: "este enlace no es valido"});
+        const evento = await pool.query(
+            `select e.id_evento, e.tipo_evento, e.fecha::text as fecha, e.sede_prevista, e.cant_asistentes_estimada,
+                    e.necesidades_preferencias, e.estado, c.nombre_completo as cliente_nombre, p.nombre_completo as organizador_nombre,
+                    em.nombre as empresa_nombre, em.telefono as empresa_telefono, em.email as empresa_email,
+                    s.nombre as sucursal_nombre, s.direccion as sucursal_direccion
+             from evento e
+             left join cliente c on c.id_cliente = e.id_cliente
+             left join personal p on p.id_personal = e.id_organizador
+             left join sucursal s on s.id_sucursal = e.id_sucursal
+             join empresas em on em.id_empresa = e.id_empresa
+             where e.token_publico = $1`,
+            [token]
+        );
+        if(evento.rows.length === 0){
+            return res.status(404).json(ENLACE_INVALIDO);
         }
 
-        const {id_evento, ...datosEvento} = evento;
-        let propuesta = null;
+        const {id_evento, ...datosEvento} = evento.rows[0];
+        const servicios = (await serviciosDelEvento(pool, id_evento)).map(({nombre, equipamiento, precio}) => ({nombre, equipamiento, precio}));
 
-        const unaPropuesta = await buscarPropuesta(pool, id_evento, {bloquear: false});
-        if(unaPropuesta && ESTADOS_VISIBLES.includes(unaPropuesta.estado)){
-            const servicios = await pool.query(
-                `select s.nombre, d.cantidad, d.importe_unitario, d.cantidad * d.importe_unitario as subtotal
-                 from detalle_propuesta d
-                 join servicio s on s.id_servicio = d.id_servicio
-                 where d.id_propuesta = $1 and d.descartado = false
-                 order by d.id_detalle`,
-                [unaPropuesta.id_propuesta]
-            );
-
-            const {id_propuesta, ...datosPropuesta} = unaPropuesta;
-            propuesta = {
-                ...datosPropuesta,
-                servicios: servicios.rows,
-                puede_responder: ESTADOS_QUE_ADMITEN_RESPUESTA.includes(unaPropuesta.estado),
-            };
-        }
-
-        res.json({evento: datosEvento, propuesta});
+        res.json({evento: datosEvento, servicios, total: totalDe(servicios)});
 
     } catch (error) {
         console.error(error);
 
         res.status(500).json({mensaje: "no se pudo obtener el evento"});
-    }
-};
-
-export const responderPropuestaPublica = async (req, res) => {
-    sinCache(res);
-
-    const {token} = req.params;
-    if(!REGEX_TOKEN.test(token)){
-        return res.status(404).json({mensaje: "este enlace no es valido"});
-    }
-
-    const {decision, motivo} = req.body ?? {};
-    if(decision !== "aceptar" && decision !== "rechazar"){
-        return res.status(400).json({mensaje: "la decision debe ser aceptar o rechazar"});
-    }
-    if(motivo !== undefined && motivo !== null && (typeof motivo !== "string" || motivo.trim().length > MOTIVO_MAXIMO)){
-        return res.status(400).json({mensaje: `el motivo no puede superar los ${MOTIVO_MAXIMO} caracteres`});
-    }
-
-    const cliente = await pool.connect();
-    try{
-        await cliente.query("BEGIN");
-
-        const evento = await buscarEvento(cliente, token, {bloquear: true});
-        if(!evento){
-            await cliente.query("ROLLBACK");
-            return res.status(404).json({mensaje: "este enlace no es valido"});
-        }
-
-        const propuesta = await buscarPropuesta(cliente, evento.id_evento, {bloquear: true});
-        if(!propuesta || !ESTADOS_QUE_ADMITEN_RESPUESTA.includes(propuesta.estado)){
-            await cliente.query("ROLLBACK");
-            return res.status(409).json({mensaje: "esta propuesta ya no admite respuesta"});
-        }
-
-        const acepta = decision === "aceptar";
-        const estado = acepta ? "aceptada" : "rechazada";
-
-        await cliente.query(
-            `update propuesta set estado = $1, fecha_respuesta = current_date, motivo_rechazo = $2
-             where id_propuesta = $3`,
-            [estado, acepta ? null : motivo?.trim() || null, propuesta.id_propuesta]
-        );
-        await cliente.query(`update evento set estado = $1 where id_evento = $2`, [estado, evento.id_evento]);
-
-        await cliente.query("COMMIT");
-
-        res.json({mensaje: acepta ? "propuesta aceptada" : "propuesta rechazada", estado});
-
-    } catch (error) {
-        await cliente.query("ROLLBACK");
-        console.error(error);
-
-        // El trigger del evento exige fecha, sede y asistentes para poder aceptarlo.
-        if(error.code === "P0001"){
-            return res.status(409).json({mensaje: "el evento todavia no tiene fecha, sede y cantidad de asistentes definidas, contacta a la organizadora"});
-        }
-
-        res.status(500).json({mensaje: "no se pudo registrar la respuesta"});
-    } finally {
-        cliente.release();
     }
 };

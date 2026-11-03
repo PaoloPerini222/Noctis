@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { clientesApi } from "../api/clientes.js";
-import { serviciosApi, proveedoresApi } from "../api/catalogos.js";
+import { serviciosApi, proveedoresApi, sucursalesApi } from "../api/catalogos.js";
 import { personalApi } from "../api/equipo.js";
 import { eventosApi } from "../api/eventos.js";
 
@@ -10,6 +10,7 @@ const FUENTES = {
   personal: personalApi,
   servicios: serviciosApi,
   proveedores: proveedoresApi,
+  sucursales: sucursalesApi,
 };
 
 // Carga las listas que una pantalla necesita para mostrar nombres en vez de ids y armar los selectores.

@@ -58,3 +58,112 @@
     gap: 28px;
   }
 }
+
+/* Link de reservas (/reservar/:token): servicios elegibles, pasos y resumen con el total. */
+.reservar section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.reservar-paso {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 700 20px var(--display);
+  letter-spacing: .02em;
+}
+
+.reservar-paso span {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 15px;
+}
+
+.reservar-servicios {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.reservar-servicio {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  backdrop-filter: var(--glass-blur);
+  cursor: pointer;
+  transition: border-color .2s, box-shadow .2s, transform .2s;
+}
+
+.reservar-servicio:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+}
+
+.reservar-servicio:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.reservar-servicio.on {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary), var(--glass-shadow);
+}
+
+.reservar-servicio-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+}
+
+.reservar-check {
+  color: var(--primary);
+  font-size: 20px;
+}
+
+.reservar-precio {
+  font: 700 18px var(--display);
+  color: var(--pink);
+}
+
+.reservar-servicio p {
+  color: var(--soft);
+  font-size: 14px;
+}
+
+.reservar-equipo {
+  color: var(--muted) !important;
+}
+
+.reservar-resumen .ant-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.reservar-resumen .ant-card-body > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reservar .ant-alert {
+  margin-top: 14px;
+}

@@ -4,6 +4,6 @@ import { crearApi } from "./client.js";
 // Cliente HTTP del recurso /empresas (solo lo usa el superadmin de la plataforma).
 export const empresasApi = {
   ...crearApi("/empresas"),
-  // Suma un responsable (dueño/a) a una empresa: crea su cuenta de acceso y le da el rol.
-  agregarResponsable: (id, datos) => api.post(`/empresas/${id}/responsable`, datos).then((res) => res.data),
+  // Suma un admin a una empresa: crea su cuenta de acceso y le da el rol.
+  agregarAdmin: (id, datos) => api.post(`/empresas/${id}/admin`, datos).then((res) => res.data),
 };

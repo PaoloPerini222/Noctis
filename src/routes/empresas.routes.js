@@ -4,7 +4,7 @@ import { soloRoles, SUPERADMIN } from "../middleware/permisos.js";
 import { obtenerEmpresas,
     obtenerEmpresa,
     crearEmpresa,
-    agregarResponsable,
+    agregarAdmin,
     editarEmpresa,
     eliminarEmpresa } from "../controllers/empresas.controller.js";
 
@@ -16,7 +16,7 @@ router.use(verificarToken, soloRoles(SUPERADMIN));
 router.get("/", obtenerEmpresas);
 router.get("/:id", obtenerEmpresa);
 router.post("/", crearEmpresa);
-router.post("/:id/responsable", agregarResponsable);
+router.post("/:id/admin", agregarAdmin);
 router.put("/:id", editarEmpresa);
 router.delete("/:id", eliminarEmpresa);
 

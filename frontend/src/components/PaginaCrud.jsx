@@ -9,7 +9,7 @@ import FormModal from "./FormModal.jsx";
 import Topbar from "./Topbar.jsx";
 
 // Página de listado + alta/edición/baja para un recurso del back, con Ant Design (Table, Modal, Popconfirm).
-// Cada sección simple (Clientes, Empresas, Propuestas, Tareas) es solo un objeto "config":
+// Cada sección simple (Clientes, Empresas, Servicios, Proveedores) es solo un objeto "config":
 //   titulo    -> título de la página y del buscador ("Clientes")
 //   singular  -> nombre en singular para los botones ("cliente"); femenino: true -> "Nueva"
 //   api       -> cliente HTTP del recurso (carpeta api/)

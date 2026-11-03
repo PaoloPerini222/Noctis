@@ -8,7 +8,7 @@ const normalizarEmail = (email) => String(email).trim().toLowerCase();
 // Devuelve el usuario con su personal asociado y la lista de nombres de rol.
 const buscarUsuario = async (campo, valor) => {
   const resultado = await pool.query(`
-    SELECT u.id_usuario, u.email, u.password_hash, p.id_personal, p.nombre_completo AS nombre, p.id_empresa, em.nombre AS empresa, em.activo AS empresa_activa,
+    SELECT u.id_usuario, u.email, u.password_hash, p.id_personal, p.nombre_completo AS nombre, p.id_empresa, em.nombre AS empresa, em.activo AS empresa_activa, em.token_reservas,
            COALESCE(array_agg(r.nombre) FILTER (WHERE r.nombre IS NOT NULL), '{}') AS roles
     FROM usuario u
     LEFT JOIN personal p ON p.usuario_id = u.id_usuario
@@ -27,7 +27,9 @@ const datosPublicos = (usuario) => ({
   email: usuario.email,
   roles: usuario.roles,
   id_empresa: usuario.id_empresa,
-  empresa: usuario.empresa
+  empresa: usuario.empresa,
+  // Link público de reservas de su empresa (/reservar/<token>).
+  token_reservas: usuario.token_reservas ?? null
 });
 
 // Empresas entre las que se puede elegir al registrarse (solo el nombre, nada interno).
