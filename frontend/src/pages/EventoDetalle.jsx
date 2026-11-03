@@ -1,7 +1,7 @@
 import { ArrowLeftOutlined, CheckOutlined, CloseCircleOutlined, CloseOutlined, EditOutlined, FlagOutlined, LinkOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Descriptions, Empty, Popconfirm, Result, Skeleton, Space, Table, Tabs, Tooltip } from "antd";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { eventosApi } from "../api/eventos.js";
 import AvisarTodos from "../components/evento/AvisarTodos.jsx";
 import { columnaProveedores } from "../components/evento/AvisoProveedores.jsx";
@@ -28,6 +28,8 @@ const COLUMNAS_SERVICIOS = [
 export default function EventoDetalle() {
   const { id } = useParams();
   const [params, setParams] = useSearchParams();
+  // Si se llegó desde la card de Detalles, volver reabre esa card en vez de la lista.
+  const desdeDetalle = useLocation().state?.desdeDetalle;
   const { message } = App.useApp();
   const permisos = usePermisos();
   const { clientes, personal, servicios, sucursales, nombreCliente, nombrePersona, cliente: datosCliente, persona: datosPersona } = useCatalogos(["clientes", "personal", "servicios", "sucursales"]);
@@ -172,8 +174,8 @@ export default function EventoDetalle() {
 
   return (
     <main className="main">
-      <Link to="/eventos" className="volver">
-        <ArrowLeftOutlined /> Eventos
+      <Link to={desdeDetalle ? `/eventos?ver=${evento.id_evento}` : "/eventos"} className="volver">
+        <ArrowLeftOutlined /> {desdeDetalle ? "Volver a la reserva" : "Eventos"}
       </Link>
 
       <div className="page-head evento-head">

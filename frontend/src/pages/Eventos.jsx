@@ -1,6 +1,7 @@
 import { CopyOutlined, ExportOutlined, EyeOutlined, PlusOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Card, Empty, Segmented, Space, Table } from "antd";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { eventosApi } from "../api/eventos.js";
 import CalendarioMes from "../components/evento/CalendarioMes.jsx";
 import DetalleReserva from "../components/evento/DetalleReserva.jsx";
@@ -75,7 +76,10 @@ export default function Eventos() {
   const [filtro, setFiltro] = useState("reservas");
   const [busqueda, setBusqueda] = useState("");
   const [editando, setEditando] = useState(null); // null | "nuevo" (los eventos existentes se editan desde su ficha)
-  const [viendo, setViendo] = useState(null); // evento abierto en Detalles
+  // El evento abierto en Detalles va en la URL (?ver=6): al volver de la ficha completa se reabre la misma card.
+  const [params, setParams] = useSearchParams();
+  const viendo = items.find((e) => String(e.id_evento) === params.get("ver")) ?? null;
+  const setViendo = (e) => setParams(e ? { ver: e.id_evento } : {}, { replace: true });
   const [dia, setDia] = useState(null); // { fecha, eventos } del día tocado en el calendario
 
   const hoy = hoyISO();

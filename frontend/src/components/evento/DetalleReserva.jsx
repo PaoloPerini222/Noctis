@@ -111,7 +111,7 @@ export default function DetalleReserva({ evento, onCerrar, onCambio }) {
                 Link del cliente
               </Button>
             )}
-            <Button type="text" icon={<ExportOutlined />} onClick={() => navigate(`/eventos/${evento.id_evento}`)}>
+            <Button type="text" icon={<ExportOutlined />} onClick={() => navigate(`/eventos/${evento.id_evento}`, { state: { desdeDetalle: true } })}>
               Ficha completa
             </Button>
           </Space>
