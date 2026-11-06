@@ -139,8 +139,7 @@ const clienteDeLaReserva = async (db, idEmpresa, datos) => {
     }
 
     const nuevo = await db.query(
-        // Todavía no es cliente: pasa a Clientes cuando se acepta su reserva.
-        `insert into cliente (nombre, apellido, telefono, email, id_empresa, confirmado) values ($1, $2, $3, $4, $5, false) returning id_cliente`,
+        `insert into cliente (nombre, apellido, telefono, email, id_empresa) values ($1, $2, $3, $4, $5) returning id_cliente`,
         [datos.nombre, datos.apellido, datos.telefono, datos.email, idEmpresa]
     );
 
