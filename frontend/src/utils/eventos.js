@@ -95,7 +95,7 @@ export function mensajeCliente({ evento, empresa, estado }) {
   const nombre = evento.cliente_nombre ? ` ${evento.cliente_nombre.split(" ")[0]}` : "";
   const link = evento.token_publico ? `${window.location.origin}/evento/${evento.token_publico}` : null;
   const cuerpo = estado === "confirmado"
-    ? [`¡Tu reserva de *${evento.tipo_evento}* para el *${fechaEscrita(evento.fecha)}* está confirmada! 🎉`]
+    ? [`¡Tu reserva de *${evento.tipo_evento}* para el *${fechaEscrita(evento.fecha)}* está confirmada!`]
     : [`Lamentablemente no vamos a poder tomar tu reserva de *${evento.tipo_evento}* para el *${fechaEscrita(evento.fecha)}*.`, "Si querés, buscamos juntos otra fecha."];
   return [`Hola${nombre}! Te escribimos de ${empresa}.`, ...cuerpo, ...(link ? ["", `Podés ver tu reserva acá: ${link}`] : [])].join("\n");
 }
