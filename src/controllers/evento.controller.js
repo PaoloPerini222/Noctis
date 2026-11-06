@@ -272,7 +272,7 @@ export const editarEvento = async (req, res) => {
         await bloquearAgenda(conexion, idEmpresa);
 
         const actual = await conexion.query(
-            `select tipo_evento, fecha::text as fecha, sede_prevista, cant_asistentes_estimada, necesidades_preferencias, estado, id_organizador, estado_sede, id_sucursal
+            `select tipo_evento, fecha::text as fecha, sede_prevista, cant_asistentes_estimada, necesidades_preferencias, estado, id_organizador, estado_sede, id_sucursal, id_cliente
              from evento where id_evento = $1 and id_empresa = $2 for update`,
             [idEvento, idEmpresa]
         );
@@ -342,6 +342,11 @@ export const editarEvento = async (req, res) => {
                 await conexion.query("rollback");
                 return res.status(400).json({mensaje: errorServicios});
             }
+        }
+
+        // Al aceptar la reserva, quien reservó por el link pasa a ser cliente (aparece en Clientes).
+        if(datos.estado === "confirmado" && antes.estado !== "confirmado" && antes.id_cliente){
+            await conexion.query(`update cliente set confirmado = true where id_cliente = $1 and id_empresa = $2`, [antes.id_cliente, idEmpresa]);
         }
 
         // Queda anotado en el historial: el cambio de estado y, con el evento confirmado, los cambios de fecha o sede.

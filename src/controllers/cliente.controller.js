@@ -62,7 +62,8 @@ const validarCliente = (body) => {
 
 export const obtenerClientes = async (req, res) => {
     try{
-        const clientes = await pool.query(`select * from cliente where id_empresa = $1 order by id_cliente`, [req.usuario.id_empresa]);
+        // Solo los clientes de verdad: quien reservó por el link aparece recién cuando se acepta su reserva.
+        const clientes = await pool.query(`select * from cliente where id_empresa = $1 and confirmado order by id_cliente`, [req.usuario.id_empresa]);
 
         res.json(clientes.rows);
 
