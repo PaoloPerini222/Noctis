@@ -236,11 +236,14 @@ export const obtenerEventoPublico = async (req, res) => {
             return res.status(404).json(ENLACE_INVALIDO);
         }
 
+        // Además de lo que se muestra, va lo necesario para que el cliente corrija su reserva mientras está pendiente:
+        // el link de reservas de la empresa, el salón, sus datos de contacto y los ids de los servicios elegidos.
         const evento = await pool.query(
             `select e.id_evento, e.tipo_evento, e.fecha::text as fecha, e.sede_prevista, e.cant_asistentes_estimada,
                     e.necesidades_preferencias, e.estado, c.nombre_completo as cliente_nombre, p.nombre_completo as organizador_nombre,
-                    em.nombre as empresa_nombre, em.telefono as empresa_telefono, em.email as empresa_email,
-                    s.nombre as sucursal_nombre, s.direccion as sucursal_direccion
+                    em.nombre as empresa_nombre, em.telefono as empresa_telefono, em.email as empresa_email, em.token_reservas,
+                    s.nombre as sucursal_nombre, s.direccion as sucursal_direccion, e.id_sucursal,
+                    c.nombre as cliente_nombre_pila, c.apellido as cliente_apellido, c.telefono as cliente_telefono, c.email as cliente_email
              from evento e
              left join cliente c on c.id_cliente = e.id_cliente
              left join personal p on p.id_personal = e.id_organizador
@@ -254,13 +257,112 @@ export const obtenerEventoPublico = async (req, res) => {
         }
 
         const {id_evento, ...datosEvento} = evento.rows[0];
-        const servicios = (await serviciosDelEvento(pool, id_evento)).map(({nombre, equipamiento, precio}) => ({nombre, equipamiento, precio}));
+        const servicios = (await serviciosDelEvento(pool, id_evento)).map(({id_servicio, nombre, equipamiento, precio}) => ({id_servicio, nombre, equipamiento, precio}));
 
-        res.json({evento: datosEvento, servicios, total: totalDe(servicios)});
+        res.json({evento: {...datosEvento, se_puede_modificar: datosEvento.estado === "propuesta"}, servicios, total: totalDe(servicios)});
 
     } catch (error) {
         console.error(error);
 
         res.status(500).json({mensaje: "no se pudo obtener el evento"});
+    }
+};
+
+// El cliente corrige su reserva (salón, servicios, fecha o sus datos) mientras siga pendiente. Una vez aceptada o
+// rechazada ya no se toca desde el link: cualquier cambio lo coordina con la organizadora.
+export const modificarReserva = async (req, res) => {
+    sinCache(res);
+
+    const {token} = req.params;
+    if(!REGEX_TOKEN.test(token)){
+        return res.status(404).json(ENLACE_INVALIDO);
+    }
+
+    const {error, datos} = validarReserva(req.body);
+    if(error){
+        return res.status(400).json({mensaje: error});
+    }
+
+    const conexion = await pool.connect();
+    try{
+        await conexion.query("BEGIN");
+
+        const encontrado = await conexion.query(
+            `select e.id_evento, e.id_cliente, e.estado, e.fecha::text as fecha, e.id_empresa
+             from evento e join empresas em on em.id_empresa = e.id_empresa and em.activo
+             where e.token_publico = $1 for update of e`,
+            [token]
+        );
+        const evento = encontrado.rows[0];
+        if(!evento){
+            await conexion.query("ROLLBACK");
+            return res.status(404).json(ENLACE_INVALIDO);
+        }
+        if(evento.estado !== "propuesta"){
+            await conexion.query("ROLLBACK");
+            return res.status(409).json({mensaje: "tu reserva ya fue revisada y no se puede modificar desde acá; contactá a la organizadora"});
+        }
+
+        const pasada = await conexion.query(`select $1::date < current_date as pasada`, [datos.fecha]);
+        if(pasada.rows[0].pasada){
+            await conexion.query("ROLLBACK");
+            return res.status(400).json({mensaje: "esa fecha ya pasó, elegí otra"});
+        }
+
+        const salones = await conexion.query(`select id_sucursal from sucursal where id_empresa = $1`, [evento.id_empresa]);
+        if(salones.rows.length > 0 && datos.id_sucursal === null){
+            await conexion.query("ROLLBACK");
+            return res.status(400).json({mensaje: "elegí el salón"});
+        }
+        if(datos.id_sucursal !== null && !salones.rows.some((s) => s.id_sucursal === datos.id_sucursal)){
+            await conexion.query("ROLLBACK");
+            return res.status(400).json({mensaje: "el salón elegido no existe"});
+        }
+
+        await bloquearAgenda(conexion, evento.id_empresa);
+        const fechaOcupada = await validarFechaLibre(conexion, evento.id_empresa, datos.fecha, datos.id_sucursal, evento.id_evento);
+        if(fechaOcupada){
+            await conexion.query("ROLLBACK");
+            return res.status(409).json({mensaje: fechaOcupada});
+        }
+
+        if(evento.id_cliente !== null){
+            await conexion.query(
+                `update cliente set nombre = $1, apellido = $2, telefono = $3, email = $4 where id_cliente = $5`,
+                [datos.nombre, datos.apellido, datos.telefono, datos.email, evento.id_cliente]
+            );
+        }
+        await conexion.query(
+            `update evento set tipo_evento = $1, fecha = $2, sede_prevista = $3, cant_asistentes_estimada = $4,
+                               necesidades_preferencias = $5, id_sucursal = $6
+             where id_evento = $7`,
+            [datos.tipo_evento, datos.fecha, datos.sede_prevista, datos.cant_asistentes_estimada, datos.necesidades_preferencias, datos.id_sucursal, evento.id_evento]
+        );
+
+        const errorServicios = await guardarServiciosDelEvento(conexion, evento.id_evento, evento.id_empresa, datos.servicios);
+        if(errorServicios){
+            await conexion.query("ROLLBACK");
+            return res.status(400).json({mensaje: errorServicios});
+        }
+        // Las respuestas de los proveedores valen para ese día y esos servicios: si cambió la fecha hay que volver a consultarles.
+        await conexion.query(
+            `delete from evento_proveedor where id_evento = $1 and ($2 or not (id_servicio = any($3)))`,
+            [evento.id_evento, evento.fecha !== datos.fecha, datos.servicios]
+        );
+
+        await conexion.query("COMMIT");
+        res.json({mensaje: "reserva actualizada", token});
+
+    } catch (error) {
+        await conexion.query("ROLLBACK");
+        console.error(error);
+
+        if(esFechaRepetida(error)){
+            return res.status(409).json(respuestaFechaRepetida);
+        }
+
+        res.status(500).json({mensaje: "no se pudo modificar la reserva"});
+    } finally {
+        conexion.release();
     }
 };

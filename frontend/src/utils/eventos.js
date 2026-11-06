@@ -89,3 +89,27 @@ export const linkWhatsapp = (telefono, texto) => {
   const numero = numeroWhatsapp(telefono);
   return numero ? `https://wa.me/${numero}?text=${encodeURIComponent(texto)}` : null;
 };
+
+// Aviso prearmado al cliente cuando se acepta o se rechaza su reserva, con el link para seguirla.
+export function mensajeCliente({ evento, empresa, estado }) {
+  const nombre = evento.cliente_nombre ? ` ${evento.cliente_nombre.split(" ")[0]}` : "";
+  const link = evento.token_publico ? `${window.location.origin}/evento/${evento.token_publico}` : null;
+  const cuerpo = estado === "confirmado"
+    ? [`¡Tu reserva de *${evento.tipo_evento}* para el *${fechaEscrita(evento.fecha)}* está confirmada! 🎉`]
+    : [`Lamentablemente no vamos a poder tomar tu reserva de *${evento.tipo_evento}* para el *${fechaEscrita(evento.fecha)}*.`, "Si querés, buscamos juntos otra fecha."];
+  return [`Hola${nombre}! Te escribimos de ${empresa}.`, ...cuerpo, ...(link ? ["", `Podés ver tu reserva acá: ${link}`] : [])].join("\n");
+}
+
+// Abre WhatsApp con el cliente después de aceptar o rechazar. La pestaña se abre en el mismo clic (si se abre
+// después de esperar al back, el navegador la bloquea) y se completa o se cierra según cómo terminó la acción.
+//   accion -> async () => evento actualizado; devuelve true si salió bien
+export async function avisarAlCliente({ evento, empresa, estado, accion }) {
+  const pestana = evento.cliente_telefono ? window.open("", "_blank") : null;
+  const ok = await accion();
+  const link = linkWhatsapp(evento.cliente_telefono, mensajeCliente({ evento, empresa, estado }));
+  if (pestana) {
+    if (ok && link) pestana.location.href = link;
+    else pestana.close();
+  }
+  return ok;
+}

@@ -1,4 +1,4 @@
-import { CopyOutlined, ExportOutlined, EyeOutlined, PlusOutlined } from "@ant-design/icons";
+import { CopyOutlined, ExportOutlined, EyeOutlined, PlusOutlined, ReloadOutlined } from "@ant-design/icons";
 import { Alert, App, Button, Card, Empty, Segmented, Space, Table } from "antd";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -187,9 +187,22 @@ export default function Eventos() {
             onChange={setFiltro}
             options={FILTROS.map((f) => ({ label: f.id === "reservas" && cantidadReservas ? `${f.label} (${cantidadReservas})` : f.label, value: f.id }))}
           />
-          <span className="muted">
-            {cargando ? "Cargando…" : `${lista.length} ${lista.length === 1 ? "evento" : "eventos"}`}
-          </span>
+          {/* Actualizar trae las reservas que entraron por el link público sin recargar la página (tabla y calendario). */}
+          <Space>
+            <span className="muted">
+              {cargando ? "Cargando…" : `${lista.length} ${lista.length === 1 ? "evento" : "eventos"}`}
+            </span>
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={() => {
+                recargar();
+                recargarCatalogos();
+              }}
+            >
+              Actualizar
+            </Button>
+          </Space>
         </div>
         <Table
           rowKey="id_evento"

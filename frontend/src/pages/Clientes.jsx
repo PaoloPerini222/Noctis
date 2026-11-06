@@ -1,6 +1,20 @@
 import PaginaCrud from "../components/PaginaCrud.jsx";
 import { clientesApi } from "../api/clientes.js";
 import { nombreCompleto } from "../utils/formato.js";
+import { linkWhatsapp } from "../utils/eventos.js";
+
+// Tocar el teléfono abre WhatsApp con el cliente (si el número no sirve para WhatsApp, llama) y el email abre el correo.
+function Telefono({ cliente }) {
+  if (!cliente.telefono) return "—";
+  const whatsapp = linkWhatsapp(cliente.telefono, `Hola ${cliente.nombre}!`);
+  return (
+    <a href={whatsapp ?? `tel:${cliente.telefono}`} target={whatsapp ? "_blank" : undefined} rel="noopener noreferrer">
+      {cliente.telefono}
+    </a>
+  );
+}
+
+const Email = ({ cliente }) => (cliente.email ? <a href={`mailto:${cliente.email}`}>{cliente.email}</a> : "—");
 
 // Quien contrata el evento (P25: identificarlo y tener una forma de contactarlo).
 const config = {
@@ -14,8 +28,8 @@ const config = {
   buscar: (c) => `${nombreCompleto(c)} ${c.email ?? ""} ${c.telefono ?? ""} ${c.direccion ?? ""}`,
   columnas: [
     { titulo: "Cliente", render: (c) => nombreCompleto(c) },
-    { titulo: "Teléfono", render: (c) => c.telefono ?? "—" },
-    { titulo: "Email", render: (c) => c.email ?? "—" },
+    { titulo: "Teléfono", render: (c) => <Telefono cliente={c} /> },
+    { titulo: "Email", render: (c) => <Email cliente={c} /> },
     { titulo: "Dirección", render: (c) => c.direccion ?? "—" },
   ],
   campos: [

@@ -1,7 +1,7 @@
-import { CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
-import { Alert, Card, Descriptions, Result, Spin, Table, Typography } from "antd";
+import { CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, EditOutlined } from "@ant-design/icons";
+import { Alert, Button, Card, Descriptions, Result, Spin, Table, Typography } from "antd";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import BotonTema from "../components/BotonTema.jsx";
 import Estado from "../components/Estado.jsx";
 import Logo from "../components/Logo.jsx";
@@ -71,6 +71,15 @@ export default function EventoPublico() {
           <h1>{evento.tipo_evento}</h1>
 
           <Alert type={estado.tipo} showIcon icon={estado.icono} title={estado.aviso} />
+
+          {/* Mientras está pendiente, el cliente puede corregir lo que cargó (vuelve al formulario completo). */}
+          {evento.se_puede_modificar && (
+            <div>
+              <Link to={`/reservar/${evento.token_reservas}?editar=${token}`}>
+                <Button icon={<EditOutlined />}>Modificar mi reserva</Button>
+              </Link>
+            </div>
+          )}
 
           <Card variant="borderless" className="pub-datos">
             <Descriptions

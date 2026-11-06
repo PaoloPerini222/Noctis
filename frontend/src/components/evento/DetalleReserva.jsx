@@ -6,7 +6,8 @@ import { eventosApi } from "../../api/eventos.js";
 import usePermisos from "../../hooks/usePermisos.js";
 import { mensajeError } from "../../services/api.js";
 import { fechaCorta, moneda } from "../../utils/formato.js";
-import { copiar, ESTADOS } from "../../utils/eventos.js";
+import { avisarAlCliente, copiar, ESTADOS } from "../../utils/eventos.js";
+import { useAuth } from "../../context/AuthContext.jsx";
 import Estado from "../Estado.jsx";
 import AvisarTodos from "./AvisarTodos.jsx";
 import { columnaProveedores } from "./AvisoProveedores.jsx";
@@ -25,6 +26,7 @@ const COLUMNAS_SERVICIOS = [
 export default function DetalleReserva({ evento, onCerrar, onCambio }) {
   const { message } = App.useApp();
   const permisos = usePermisos();
+  const { usuario } = useAuth();
   const navigate = useNavigate();
   const [detalle, setDetalle] = useState(null);
   const [error, setError] = useState("");
@@ -39,19 +41,26 @@ export default function DetalleReserva({ evento, onCerrar, onCambio }) {
     cargar();
   }, [cargar]);
 
+  // Devuelve true si salió bien.
   const ejecutar = async (accion, exito) => {
     try {
       await accion();
       message.success(exito);
       onCambio();
       onCerrar();
+      return true;
     } catch (e) {
       message.error(mensajeError(e, "No se pudo completar la acción"));
+      return false;
     }
   };
   const cambiarEstado = (estado, exito) => ejecutar(() => eventosApi.editar(evento.id_evento, { estado }), exito);
 
   const ev = detalle ?? evento;
+  // Aceptar o rechazar la reserva y abrir WhatsApp con el cliente para avisarle.
+  const responder = (estado, exito) =>
+    avisarAlCliente({ evento: ev, empresa: usuario?.empresa ?? "la organizadora", estado, accion: () => cambiarEstado(estado, exito) });
+  const avisoWhatsapp = ev.cliente_telefono ? " Se abre WhatsApp para avisarle al cliente." : "";
   const servicios = detalle?.detalle_servicios ?? [];
   // Se puede aceptar aunque algún proveedor no haya confirmado: solo se avisa en la confirmación.
   const faltan = detalle?.servicios_sin_confirmar ?? [];
@@ -59,7 +68,7 @@ export default function DetalleReserva({ evento, onCerrar, onCambio }) {
   const acciones = [];
   if (permisos.esAdmin && ev.estado === "propuesta") {
     acciones.push(
-      <Popconfirm key="rechazar" title="¿Rechazar esta reserva?" description="La fecha vuelve a quedar libre." okText="Sí, rechazar" cancelText="Volver" okButtonProps={{ danger: true }} onConfirm={() => cambiarEstado("rechazado", "Reserva rechazada")}>
+      <Popconfirm key="rechazar" title="¿Rechazar esta reserva?" description={`La fecha vuelve a quedar libre.${avisoWhatsapp}`} okText="Sí, rechazar" cancelText="Volver" okButtonProps={{ danger: true }} onConfirm={() => responder("rechazado", "Reserva rechazada")}>
         <Button danger icon={<CloseOutlined />}>Rechazar</Button>
       </Popconfirm>,
       !detalle ? (
@@ -68,10 +77,10 @@ export default function DetalleReserva({ evento, onCerrar, onCambio }) {
         <Popconfirm
           key="aceptar"
           title="¿Aceptar esta reserva?"
-          description={faltan.length ? `Todavía no confirmaron: ${faltan.join(", ")}. Pasa igual a Próximos como evento confirmado.` : "Pasa a Próximos como evento confirmado."}
+          description={`${faltan.length ? `Todavía no confirmaron: ${faltan.join(", ")}. Pasa igual a Próximos como evento confirmado.` : "Pasa a Próximos como evento confirmado."}${avisoWhatsapp}`}
           okText="Sí, aceptar"
           cancelText="Volver"
-          onConfirm={() => cambiarEstado("confirmado", "Reserva aceptada: pasó a Próximos")}
+          onConfirm={() => responder("confirmado", "Reserva aceptada: pasó a Próximos")}
         >
           <Button type="primary" icon={<CheckOutlined />}>Aceptar</Button>
         </Popconfirm>

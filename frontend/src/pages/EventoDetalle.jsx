@@ -12,7 +12,8 @@ import useCatalogos from "../hooks/useCatalogos.js";
 import usePermisos from "../hooks/usePermisos.js";
 import { mensajeError } from "../services/api.js";
 import { contacto, diasHasta, fechaCorta, moneda } from "../utils/formato.js";
-import { CERRADOS, colorDe, copiar, ESTADOS } from "../utils/eventos.js";
+import { avisarAlCliente, CERRADOS, colorDe, copiar, ESTADOS } from "../utils/eventos.js";
+import { useAuth } from "../context/AuthContext.jsx";
 import { camposEvento } from "./Eventos.jsx";
 
 // Columnas de la tabla de servicios elegidos en la reserva.
@@ -32,6 +33,7 @@ export default function EventoDetalle() {
   const desdeDetalle = useLocation().state?.desdeDetalle;
   const { message } = App.useApp();
   const permisos = usePermisos();
+  const { usuario } = useAuth();
   const { clientes, personal, servicios, sucursales, nombreCliente, nombrePersona, cliente: datosCliente, persona: datosPersona } = useCatalogos(["clientes", "personal", "servicios", "sucursales"]);
 
   const [evento, setEvento] = useState(null);
@@ -74,14 +76,21 @@ export default function EventoDetalle() {
   const dias = evento.fecha ? diasHasta(evento.fecha) : null;
 
   // Cambia el estado del evento, avisa el resultado (o el motivo por el que el back no lo permitió) y recarga.
+  // Devuelve true si salió bien.
   const cambiarEstado = async (estado, exito) => {
     try {
       setEvento(await eventosApi.editar(evento.id_evento, { estado }));
       message.success(exito);
+      return true;
     } catch (e) {
       message.error(mensajeError(e, "No se pudo cambiar el estado"));
+      return false;
     }
   };
+  // Aceptar o rechazar la reserva y abrir WhatsApp con el cliente para avisarle.
+  const responder = (estado, exito) =>
+    avisarAlCliente({ evento, empresa: usuario?.empresa ?? "la organizadora", estado, accion: () => cambiarEstado(estado, exito) });
+  const avisoWhatsapp = evento.cliente_telefono ? " Se abre WhatsApp para avisarle al cliente." : "";
 
   // Acciones del evento según su estado.
   const acciones = [];
@@ -91,16 +100,16 @@ export default function EventoDetalle() {
       <Popconfirm
         key="aceptar"
         title="¿Aceptar esta reserva?"
-        description={evento.servicios_sin_confirmar?.length
+        description={`${evento.servicios_sin_confirmar?.length
           ? `Todavía no confirmaron: ${evento.servicios_sin_confirmar.join(", ")}. El evento queda igual confirmado para esa fecha.`
-          : "El evento queda confirmado para esa fecha."}
+          : "El evento queda confirmado para esa fecha."}${avisoWhatsapp}`}
         okText="Sí, aceptar"
         cancelText="Volver"
-        onConfirm={() => cambiarEstado("confirmado", "Reserva aceptada: el evento quedó confirmado")}
+        onConfirm={() => responder("confirmado", "Reserva aceptada: el evento quedó confirmado")}
       >
         <Button type="primary" icon={<CheckOutlined />}>Aceptar reserva</Button>
       </Popconfirm>,
-      <Popconfirm key="rechazar" title="¿Rechazar esta reserva?" description="La fecha vuelve a quedar libre." okText="Sí, rechazar" cancelText="Volver" okButtonProps={{ danger: true }} onConfirm={() => cambiarEstado("rechazado", "Reserva rechazada")}>
+      <Popconfirm key="rechazar" title="¿Rechazar esta reserva?" description={`La fecha vuelve a quedar libre.${avisoWhatsapp}`} okText="Sí, rechazar" cancelText="Volver" okButtonProps={{ danger: true }} onConfirm={() => responder("rechazado", "Reserva rechazada")}>
         <Button danger icon={<CloseOutlined />}>Rechazar</Button>
       </Popconfirm>
     );
