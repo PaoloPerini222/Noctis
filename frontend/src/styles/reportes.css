@@ -1,0 +1,163 @@
+/* ---------- Reportes (Data Warehouse) ---------- */
+
+.reportes-acciones {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.reportes {
+  display: grid;
+  gap: 18px;
+}
+
+.reportes-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 22px;
+}
+
+.kpi b {
+  font-family: var(--display);
+  font-size: 1.6rem;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.reportes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.reporte--ancho {
+  grid-column: 1 / -1;
+}
+
+.reporte-cuerpo {
+  padding: 16px 22px 20px;
+}
+
+.reporte-vacio {
+  margin: 0;
+}
+
+/* La respuesta corta a la pregunta del bloque. */
+.reporte-respuesta {
+  margin: 0 0 16px;
+  padding-left: 12px;
+  border-left: 3px solid var(--pink);
+  color: var(--soft);
+  line-height: 1.5;
+}
+
+/* Columnas por mes: una sola serie, color del tema, punta redondeada arriba y base recta. */
+.grafico-meses {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 6px;
+  height: 200px;
+}
+
+.grafico-meses__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  cursor: default;
+}
+
+.grafico-meses__pista {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--line);
+}
+
+.grafico-meses__barra {
+  width: 100%;
+  max-width: 28px;
+  margin: 0 auto;
+  background: var(--pink);
+  border-radius: 4px 4px 0 0;
+  transition: opacity 0.15s;
+}
+
+.grafico-meses__col:hover .grafico-meses__barra {
+  opacity: 0.75;
+}
+
+.grafico-meses__col span {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+/* Barras horizontales (sucursales, tipos, estados). */
+.barras,
+.estados-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.barras li,
+.estados-lista li {
+  display: grid;
+  grid-template-columns: minmax(90px, 34%) 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.barras__nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barras__pista {
+  display: block;
+  height: 10px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--line) 45%, transparent);
+  overflow: hidden;
+}
+
+.barras__barra {
+  display: block;
+  height: 100%;
+  background: var(--pink);
+  border-radius: 0 4px 4px 0;
+}
+
+.barras__valor {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .reportes-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .grafico-meses {
+    gap: 3px;
+    height: 160px;
+  }
+
+  .grafico-meses__col span {
+    font-size: 0.62rem;
+  }
+}

@@ -1,5 +1,6 @@
 import {
   AppstoreOutlined,
+  BarChartOutlined,
   BankOutlined,
   CalendarOutlined,
   EnvironmentOutlined,
@@ -24,6 +25,7 @@ export const SECCIONES = [
   { to: "/proveedores", label: "Proveedores", icono: <ShopOutlined /> },
   { to: "/servicios", label: "Servicios", icono: <AppstoreOutlined /> },
   { to: "/sucursales", label: "Sucursales", icono: <EnvironmentOutlined /> },
+  { to: "/reportes", label: "Reportes", icono: <BarChartOutlined /> },
   { to: "/configuracion", label: "Configuración", icono: <SettingOutlined /> },
   { to: "/empresas", label: "Empresas", icono: <BankOutlined /> },
 ];

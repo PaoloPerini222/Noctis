@@ -14,6 +14,7 @@ const EventoDetalle = lazy(() => import("./pages/EventoDetalle.jsx"));
 const EventoPublico = lazy(() => import("./pages/EventoPublico.jsx"));
 const Eventos = lazy(() => import("./pages/Eventos.jsx"));
 const Proveedores = lazy(() => import("./pages/Proveedores.jsx"));
+const Reportes = lazy(() => import("./pages/Reportes.jsx"));
 const Reservar = lazy(() => import("./pages/Reservar.jsx"));
 const Servicios = lazy(() => import("./pages/Servicios.jsx"));
 const Sucursales = lazy(() => import("./pages/Sucursales.jsx"));
@@ -21,7 +22,7 @@ const Sucursales = lazy(() => import("./pages/Sucursales.jsx"));
 // Mapa de rutas de toda la app.
 //   Públicas:   /  /login  /registro
 //               /reservar/:token (link de reservas de la empresa)  /evento/:token (seguimiento de una reserva)
-//   Privadas:   /eventos /eventos/:id (ficha) /clientes /proveedores /servicios /sucursales /configuracion /empresas
+//   Privadas:   /eventos /eventos/:id (ficha) /clientes /proveedores /servicios /sucursales /reportes /configuracion /empresas
 //               Van dentro de RutaProtegida (exige sesión) y de Layout (sidebar + barra móvil).
 //   Cualquier otra URL vuelve a la landing.
 // <Splash /> es la pantalla que aparece al cambiar de modo claro/oscuro (siempre montado, se muestra por evento).
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="/proveedores" element={<Proveedores />} />
         <Route path="/servicios" element={<Servicios />} />
         <Route path="/sucursales" element={<Sucursales />} />
+        <Route path="/reportes" element={<Reportes />} />
         <Route path="/configuracion" element={<Configuracion />} />
       </Route>
 

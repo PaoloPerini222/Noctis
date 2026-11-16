@@ -165,6 +165,23 @@ Lo que se agregó al comparar el sistema con el dominio descripto al final de es
 - **Constancia de cambios.** Con el encargo confirmado, el sistema anota solo (en `cambio_evento`, sin revisar) el cambio de fecha, el cambio de sede o que una sede confirmada deje de estarlo, y que un proveedor confirmado pierda la confirmación (aviso de que no puede, o reemplazo). No actualiza compromisos ni tareas: alguien debe revisarlos y registrar su situación real desde la pestaña Cambios. El cambio de asistentes no se anota solo, porque si es importante lo decide el organizador.
 - **Pendientes.** `GET /pendientes` devuelve cada evento próximo (aceptado, confirmado o en preparación, del más cercano al más lejano; los de fecha pendiente al final) con el nombre y contacto del cliente, la sede y su disponibilidad, los asistentes estimados, su estado, los servicios sin confirmar y las tareas pendientes o vencidas con responsable y fecha. Las tareas vencidas y los servicios sin confirmar también se listan aparte, aunque el evento esté lejos.
 
+## Data Warehouse (reportes)
+
+Los reportes salen de un **Data Warehouse** llamado **noctis_DW**: una base Postgres **aparte** de la del sistema, armada como modelo estrella.
+
+- **Dónde está:** `docker-compose.dw.yml` levanta la base (contenedor `noctis_DW`, puerto 5434) y **Adminer** (http://localhost:8082), un panel web para hacerle consultas SQL. El back se conecta con las variables `DW_DB_*` del `.env`.
+- **Modelo** (`src/dw/schema.sql`): hechos `evento_hecho`, `venta_servicio_hecho`, `respuesta_proveedor_hecho` y `cambio_evento_hecho`; dimensiones `tiempo_dim`, `empresa_dim`, `sucursal_dim`, `cliente_dim`, `servicio_dim`, `proveedor_dim`, `tipo_evento_dim` y `estado_dim`. `carga_etl` registra cada carga.
+- **ETL** (`src/dw/etl.js`): lee la base del sistema, calcula importes, horas de respuesta y cambios, y lo guarda en el DW con upsert, todo en una transacción. Nunca borra, así el DW conserva la historia aunque algo se elimine en el sistema. Corre sola a los pocos segundos de cada cambio en la app (alta, edición, baja o reserva del link), al levantar el back, cada `DW_ETL_HORAS` horas, con el botón **Actualizar datos** de la página Reportes, o a mano con `npm run etl`.
+- **Reportes:** la página **Reportes** del admin (`GET /api/reportes?anio=2026`) muestra ingresos por mes, sucursal y tipo de evento, servicios más vendidos, eventos por estado, ocupación de cada salón, clientes que vuelven, tiempos de respuesta de proveedores y eventos con más cambios. Todo se consulta en el DW, no en la base del sistema.
+- **Consultas a mano:** `src/dw/consultas.sql` tiene las mismas consultas listas para pegar en Adminer (servidor `noctis_dw`, usuario `dw`, contraseña `dw`, base `noctis_DW`).
+
+Para probarlo:
+
+```bash
+docker compose -f docker-compose.dw.yml up -d   # base del DW + Adminer
+npm run etl                                       # primera carga
+```
+
 ## Autenticación
 
 Auth propio con JWT (no se usa Supabase Auth).

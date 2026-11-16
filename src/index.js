@@ -13,12 +13,25 @@ import cambioRoutes from "./routes/cambio.routes.js";
 import sucursalRoutes from "./routes/sucursal.routes.js";
 import configuracionRoutes from "./routes/configuracion.routes.js";
 import respuestaRoutes from "./routes/respuesta.routes.js";
+import reporteRoutes from "./routes/reporte.routes.js";
+import { cargarPronto, programarEtl } from "./dw/etl.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({ origin: process.env.FRONTEND_URL }));
 app.use(express.json());
+
+// Cada cambio que sale bien (alta, edición, baja o reserva del link) dispara el ETL, así el Data Warehouse
+// queda al día a los pocos segundos. Los inicios de sesión y los propios reportes no cuentan como cambios.
+app.use("/api", (req, res, next) => {
+    if (req.method !== "GET" && !req.path.startsWith("/auth") && !req.path.startsWith("/reportes")) {
+        res.on("finish", () => {
+            if (res.statusCode < 400) cargarPronto();
+        });
+    }
+    next();
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/publico", publicoRoutes);
@@ -30,6 +43,7 @@ app.use("/api/servicio", servicioRoutes);
 app.use("/api/proveedor", proveedorRoutes);
 app.use("/api/sucursal", sucursalRoutes);
 app.use("/api/configuracion", configuracionRoutes);
+app.use("/api/reportes", reporteRoutes);
 
 app.use("/api/evento/:idEvento/cambios", cambioRoutes);
 app.use("/api/evento/:idEvento/proveedores", respuestaRoutes);
@@ -41,4 +55,5 @@ app.use((req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Servidor en http://localhost:${PORT}`)
+    programarEtl();
 })
