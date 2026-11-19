@@ -1,16 +1,16 @@
 import { SyncOutlined } from "@ant-design/icons";
-import { Alert, App, Button, Progress, Select, Skeleton, Table, Tag, Tooltip } from "antd";
+import { Alert, App, Button, Progress, Select, Skeleton, Table, Tooltip } from "antd";
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { reportesApi } from "../api/reportes.js";
 import Estado from "../components/Estado.jsx";
 import Topbar from "../components/Topbar.jsx";
 import { mensajeError } from "../services/api.js";
 import { ESTADOS } from "../utils/eventos.js";
-import { etiqueta, fechaCorta, moneda } from "../utils/formato.js";
+import { etiqueta, moneda } from "../utils/formato.js";
 
-// Reportes del negocio. Los datos salen del Data Warehouse (una base aparte): el back los copia del sistema
-// cada algunas horas, o al tocar "Actualizar datos". Ingresos = eventos confirmados o realizados.
+// Reportes del negocio. Los datos salen del Data Warehouse (base noctis_dw, modelo estrella de las reservas):
+// el back lo recarga con CALL dw.cargar() después de cada cambio, cada algunas horas o al tocar "Actualizar datos".
+// Ingresos = reservas confirmadas o realizadas.
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const porcentaje = (parte, total) => (total ? Math.round((parte / total) * 100) : 0);
@@ -41,23 +41,17 @@ function respuestas(d) {
   const [mejorMes] = [...d.ingresosPorMes].sort((a, b) => b.ingresos - a.ingresos);
   const [sucursal] = d.ingresosPorSucursal;
   const [tipo] = d.ingresosPorTipo;
-  const [servicio] = d.servicios;
   const cuenta = (...estados) => d.estados.filter((e) => estados.includes(e.estado)).reduce((t, e) => t + e.eventos, 0);
   const confirmados = cuenta("confirmado", "realizado");
   const cancelados = cuenta("cancelado", "rechazado");
   const total = d.resumen.eventos;
   const [salon] = d.ocupacion;
   const [cliente] = d.clientes;
-  const [proveedor] = d.proveedores.filter((p) => p.horas_promedio !== null);
-  const [cambiado] = d.cambios;
 
   return {
     meses: mejorMes ? `Tu mejor mes fue ${mejorMes.nombre_mes} con ${moneda(mejorMes.ingresos)}.` : sinDatos,
     sucursales: sucursal ? `${etiqueta(sucursal.nombre)} es la que más factura: ${moneda(sucursal.ingresos)}.` : sinDatos,
     tipos: tipo ? `Los eventos de tipo "${etiqueta(tipo.nombre)}" son los que más dejan: ${moneda(tipo.ingresos)}.` : sinDatos,
-    servicios: servicio
-      ? `${etiqueta(servicio.nombre)} es el más vendido: ${servicio.veces} ${servicio.veces === 1 ? "vez" : "veces"}, ${moneda(servicio.ingresos)}.`
-      : sinDatos,
     estados: total
       ? `De ${plural(total, "evento")}, se confirmaron ${confirmados} (${porcentaje(confirmados, total)}%) y se cancelaron o rechazaron ${cancelados} (${porcentaje(cancelados, total)}%).`
       : sinDatos,
@@ -67,12 +61,6 @@ function respuestas(d) {
     clientes: cliente
       ? `Volvieron ${d.resumen.clientes_que_vuelven} de ${plural(d.resumen.clientes, "cliente")}. El que más gastó es ${etiqueta(cliente.nombre)}: ${moneda(cliente.gastado)}.`
       : sinDatos,
-    proveedores: proveedor
-      ? `${etiqueta(proveedor.nombre)} es el que responde más rápido: ${proveedor.horas_promedio} h en promedio.`
-      : "Todavía ningún proveedor respondió una consulta en este período.",
-    cambios: cambiado
-      ? `El evento con más cambios es "${etiqueta(cambiado.tipo_evento)}" de ${etiqueta(cambiado.cliente)}: ${plural(cambiado.cant_cambios, "cambio")}.`
-      : "Ningún evento tuvo cambios en este período.",
   };
 }
 
@@ -115,7 +103,7 @@ function Barras({ filas, valor, texto, vacio = "Sin datos en este período" }) {
   );
 }
 
-const tabla = { size: "small", pagination: false, rowKey: (f) => f.nombre ?? f.id_evento, scroll: { x: true }, locale: { emptyText: "Sin datos en este período" } };
+const tabla = { size: "small", pagination: false, rowKey: (f) => f.nombre, scroll: { x: true }, locale: { emptyText: "Sin datos en este período" } };
 
 export default function Reportes() {
   const { message } = App.useApp();
@@ -265,18 +253,6 @@ export default function Reportes() {
               />
             </Bloque>
 
-            <Bloque titulo="¿Qué servicios se venden más y cuánto deja cada uno?" respuesta={resp.servicios}>
-              <Table
-                {...tabla}
-                dataSource={datos.servicios}
-                columns={[
-                  { title: "Servicio", dataIndex: "nombre", render: etiqueta },
-                  { title: "Veces", dataIndex: "veces", align: "right" },
-                  { title: "Ingresos", dataIndex: "ingresos", align: "right", render: moneda },
-                ]}
-              />
-            </Bloque>
-
             <Bloque titulo="¿Qué clientes vuelven y cuánto gastó cada uno?" respuesta={resp.clientes}>
               <Table
                 {...tabla}
@@ -290,49 +266,6 @@ export default function Reportes() {
                     dataIndex: "vuelve",
                     render: (vuelve) => (vuelve ? <Estado estado="Volvió" color="var(--lime)" /> : <span className="muted">1 vez</span>),
                   },
-                ]}
-              />
-            </Bloque>
-
-            <Bloque titulo="¿Cuánto tardan los proveedores y cuántas veces están disponibles?" respuesta={resp.proveedores}>
-              <Table
-                {...tabla}
-                dataSource={datos.proveedores}
-                locale={{ emptyText: "Todavía no se consultó a ningún proveedor en este período" }}
-                columns={[
-                  { title: "Proveedor", dataIndex: "nombre", render: etiqueta },
-                  { title: "Consultas", dataIndex: "consultas", align: "right" },
-                  {
-                    title: "Responde en",
-                    dataIndex: "horas_promedio",
-                    align: "right",
-                    render: (h) => (h === null ? <span className="muted">Sin respuestas</span> : `${h} h`),
-                  },
-                  {
-                    title: "Disponible",
-                    align: "right",
-                    render: (_, f) =>
-                      f.respondidas ? `${porcentaje(f.disponibles, f.respondidas)}%` : <span className="muted">—</span>,
-                  },
-                ]}
-              />
-            </Bloque>
-
-            <Bloque titulo="¿Qué eventos tuvieron más cambios?" detalle="Los 10 primeros" respuesta={resp.cambios} ancho>
-              <Table
-                {...tabla}
-                dataSource={datos.cambios}
-                locale={{ emptyText: "Ningún evento tuvo cambios en este período" }}
-                columns={[
-                  {
-                    title: "Evento",
-                    dataIndex: "tipo_evento",
-                    render: (tipo, f) => <Link to={`/eventos/${f.id_evento}`}>{etiqueta(tipo)}</Link>,
-                  },
-                  { title: "Cliente", dataIndex: "cliente", render: etiqueta },
-                  { title: "Fecha", dataIndex: "fecha", render: fechaCorta },
-                  { title: "Estado", dataIndex: "estado", render: (e) => <Estado estado={e} color={ESTADOS[e]} /> },
-                  { title: "Cambios", dataIndex: "cant_cambios", align: "right", render: (n) => <Tag>{n}</Tag> },
                 ]}
               />
             </Bloque>

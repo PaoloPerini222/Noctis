@@ -167,19 +167,20 @@ Lo que se agregó al comparar el sistema con el dominio descripto al final de es
 
 ## Data Warehouse (reportes)
 
-Los reportes salen de un **Data Warehouse** llamado **noctis_DW**: una base Postgres **aparte** de la del sistema, armada como modelo estrella.
+Los reportes salen de un **Data Warehouse** llamado **noctis_dw**: una **segunda base en el mismo servidor** Postgres que la base del sistema (`eventos`), armada como modelo estrella. La ficha de diseño completa (proceso, preguntas, grano, dimensiones y medidas) está en [src/dw/README.md](src/dw/README.md), y la guía para presentarlo en [src/dw/GUIA_DEMO.md](src/dw/GUIA_DEMO.md).
 
-- **Dónde está:** `docker-compose.dw.yml` levanta la base (contenedor `noctis_DW`, puerto 5434) y **Adminer** (http://localhost:8082), un panel web para hacerle consultas SQL. El back se conecta con las variables `DW_DB_*` del `.env`.
-- **Modelo** (`src/dw/schema.sql`): hechos `evento_hecho`, `venta_servicio_hecho`, `respuesta_proveedor_hecho` y `cambio_evento_hecho`; dimensiones `tiempo_dim`, `empresa_dim`, `sucursal_dim`, `cliente_dim`, `servicio_dim`, `proveedor_dim`, `tipo_evento_dim` y `estado_dim`. `carga_etl` registra cada carga.
-- **ETL** (`src/dw/etl.js`): lee la base del sistema, calcula importes, horas de respuesta y cambios, y lo guarda en el DW con upsert, todo en una transacción. Nunca borra, así el DW conserva la historia aunque algo se elimine en el sistema. Corre sola a los pocos segundos de cada cambio en la app (alta, edición, baja o reserva del link), al levantar el back, cada `DW_ETL_HORAS` horas, con el botón **Actualizar datos** de la página Reportes, o a mano con `npm run etl`.
-- **Reportes:** la página **Reportes** del admin (`GET /api/reportes?anio=2026`) muestra ingresos por mes, sucursal y tipo de evento, servicios más vendidos, eventos por estado, ocupación de cada salón, clientes que vuelven, tiempos de respuesta de proveedores y eventos con más cambios. Todo se consulta en el DW, no en la base del sistema.
-- **Consultas a mano:** `src/dw/consultas.sql` tiene las mismas consultas listas para pegar en Adminer (servidor `noctis_dw`, usuario `dw`, contraseña `dw`, base `noctis_DW`).
+- **Proceso:** las reservas de eventos. **Grano:** una fila por reserva.
+- **Modelo:** hechos `dw.hecho_reservas` (medidas `cantidad`, `importe`, `cant_servicios`, `asistentes`); dimensiones `dw.dim_fecha`, `dim_empresa`, `dim_sucursal`, `dim_cliente`, `dim_tipo_evento` y `dim_estado`. `dw.carga_etl` registra cada carga.
+- **Carga:** el procedimiento `dw.cargar()` ([src/dw/03_carga.sql](src/dw/03_carga.sql)) hace `INSERT ... SELECT` desde la base operativa (vista con postgres_fdw en el esquema `origen`), primero dimensiones y después hechos, con `ON CONFLICT` para poder repetirla. Nunca borra, así el DW conserva la historia. El back crea la base la primera vez y hace `CALL dw.cargar()` a los pocos segundos de cada cambio en la app, al arrancar, cada `DW_ETL_HORAS` horas, con el botón **Actualizar datos** de Reportes o a mano con `npm run etl:docker`.
+- **Reportes:** la página **Reportes** del admin (`GET /api/reportes?anio=2026`) muestra ingresos por mes, salón y tipo de evento, reservas por estado, ocupación de cada salón y clientes que vuelven. Todo se consulta en el DW.
+- **Verificación y consultas a mano:** [src/dw/04_consultas.sql](src/dw/04_consultas.sql) compara los totales del DW con la base operativa y responde las 4 preguntas (Adminer en http://localhost:8082: servidor `db`, usuario `eventos`, contraseña `eventos`, base `noctis_dw`).
+- Se activa con `DW_DB_NAME=noctis_dw` en `.env.docker`.
 
 Para probarlo:
 
 ```bash
-docker compose -f docker-compose.dw.yml up -d   # base del DW + Adminer
-npm run etl                                       # primera carga
+docker compose -f docker-compose.db.yml up -d   # base del sistema + Adminer
+npm run etl:docker                               # crea noctis_dw y hace la primera carga
 ```
 
 ## Autenticación

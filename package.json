@@ -8,7 +8,8 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "dev:docker": "node --env-file=.env.docker --watch src/index.js",
-    "etl": "node src/dw/cargar.js"
+    "etl": "node src/dw/cargar.js",
+    "etl:docker": "node --env-file=.env.docker src/dw/cargar.js"
   },
   "license": "ISC",
   "dependencies": {

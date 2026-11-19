@@ -3,6 +3,7 @@
 #   docker compose -f docker-compose.db.yml up -d      -> levanta la base en localhost:5433
 #   docker compose -f docker-compose.db.yml down -v    -> la borra (con sus datos) para empezar de cero
 # El back se conecta con: npm run dev:docker (lee .env.docker)
+# En este MISMO servidor el back crea la segunda base, noctis_dw (el Data Warehouse, ver src/dw/).
 services:
   db:
     image: postgres:16-alpine
@@ -21,6 +22,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+
+  # Panel web para hacerle consultas SQL a las dos bases: http://localhost:8082
+  # Sistema PostgreSQL · Servidor db · Usuario eventos · Contraseña eventos · Base de datos eventos o noctis_dw
+  # Consultas del DW listas para pegar: src/dw/04_consultas.sql
+  adminer:
+    image: adminer:4.8.1
+    container_name: paolo-proyecto-bien-adminer
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - "8082:8080"
+    depends_on:
+      - db
     restart: unless-stopped
 
 volumes:
