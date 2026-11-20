@@ -4,6 +4,8 @@ import axios from "axios";
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "/api",
   timeout: 10000,
+  // Si el back está detrás de un túnel de ngrok, evita la página de aviso que ngrok muestra en lugar de la respuesta.
+  headers: { "ngrok-skip-browser-warning": "1" },
 });
 
 // Antes de cada petición: agrega el token si existe

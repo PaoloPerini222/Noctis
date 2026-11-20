@@ -16,7 +16,11 @@ const URL_PUBLICO = `${import.meta.env.VITE_API_URL ?? "/api"}/publico`;
 
 // ruta: "reservas/<token de la empresa>" o "evento/<token de la reserva>".
 async function pedir(ruta, opciones) {
-  const respuesta = await fetch(`${URL_PUBLICO}/${ruta}`, opciones);
+  // El encabezado evita la página de aviso de ngrok cuando el back está detrás de un túnel.
+  const respuesta = await fetch(`${URL_PUBLICO}/${ruta}`, {
+    ...opciones,
+    headers: { "ngrok-skip-browser-warning": "1", ...opciones?.headers },
+  });
   const datos = await respuesta.json().catch(() => ({}));
   if (!respuesta.ok) throw new Error(datos.mensaje ?? "No se pudo completar la acción");
   return datos;

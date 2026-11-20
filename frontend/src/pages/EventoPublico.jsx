@@ -32,7 +32,7 @@ export default function EventoPublico() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`${URL_API}/${token}`)
+    fetch(`${URL_API}/${token}`, { headers: { "ngrok-skip-browser-warning": "1" } })
       .then(async (respuesta) => {
         const cuerpo = await respuesta.json().catch(() => ({}));
         if (!respuesta.ok) throw new Error(cuerpo.mensaje ?? "No se pudo cargar la reserva");

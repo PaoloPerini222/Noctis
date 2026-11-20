@@ -19,7 +19,8 @@ import { cargarPronto, programarEtl } from "./dw/etl.js";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({ origin: process.env.FRONTEND_URL }));
+// FRONTEND_URL puede tener varias direcciones separadas por coma (ej. el front local y el de Vercel).
+app.use(cors({ origin: (process.env.FRONTEND_URL ?? "").split(",").map((u) => u.trim()).filter(Boolean) }));
 app.use(express.json());
 
 // Cada cambio que sale bien (alta, edición, baja o reserva del link) dispara el ETL, así el Data Warehouse
